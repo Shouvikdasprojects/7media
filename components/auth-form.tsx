@@ -156,45 +156,67 @@ export function AuthForm({ mode }: AuthFormProps) {
           router.refresh()
         }
       } else {
-        // Sign up flow: Direct, high-speed, instant registration
-        if (!formData.name.trim()) {
-          throw new Error('Please enter your full name.')
-        }
-        if (password.length < 6) {
-          throw new Error('Password must be at least 6 characters long.')
-        }
-        if (password !== formData.confirmPassword) {
-          throw new Error('Passwords do not match.')
-        }
+        // Sign up flow
+        if (signupStep === 'form') {
+          if (!formData.name.trim()) {
+            throw new Error('Please enter your full name.')
+          }
+          if (password.length < 6) {
+            throw new Error('Password must be at least 6 characters long.')
+          }
+          if (password !== formData.confirmPassword) {
+            throw new Error('Passwords do not match.')
+          }
 
-        // Direct sign up via Better Auth client
-        const { error: signUpError } = await authClient.signUp.email({
-          email,
-          password,
-          name: formData.name.trim(),
-        })
+          const otpRes = await requestSignupOtp({
+            name: formData.name.trim(),
+            email,
+            password,
+          })
 
-        if (signUpError) {
-          throw new Error(signUpError.message || 'An account with this email may already exist. Please sign in.')
-        }
+          if (!otpRes.success) {
+            throw new Error(otpRes.error || 'Failed to send verification email.')
+          }
 
-        // Automatically sign in the newly created user
-        const { error: signInError } = await authClient.signIn.email({
-          email,
-          password,
-        })
-
-        if (signInError) {
-          router.push('/sign-in')
+          setSignupStep('otp')
+          setResendCooldown(60)
+          setIsLoading(false)
           return
+        } else {
+          // Step 2: Verify OTP and Register
+          if (!signupOtp.trim() || signupOtp.trim().length !== 6) {
+            throw new Error('Please enter the 6-digit verification code sent to your email.')
+          }
+
+          const verifyRes = await verifySignupOtpAndCreateAccount({
+            name: formData.name.trim(),
+            email,
+            password,
+            code: signupOtp.trim(),
+          })
+
+          if (!verifyRes.success) {
+            throw new Error(verifyRes.error || 'Verification failed.')
+          }
+
+          // Automatically sign in the newly verified user
+          const { error: signInError } = await authClient.signIn.email({
+            email,
+            password,
+          })
+
+          if (signInError) {
+            router.push('/sign-in')
+            return
+          }
+
+          try {
+            localStorage.setItem('7media_avatar', 'crimson')
+          } catch {}
+
+          router.push('/')
+          router.refresh()
         }
-
-        try {
-          localStorage.setItem('7media_avatar', 'crimson')
-        } catch {}
-
-        router.push('/')
-        router.refresh()
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.')
@@ -430,14 +452,6 @@ export function AuthForm({ mode }: AuthFormProps) {
               />
             </div>
 
-            {/* Spam Folder Guidance Box */}
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-left text-xs text-amber-200/90 leading-relaxed flex items-start gap-2.5">
-              <Mail size={16} className="text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-amber-300">Important:</strong> If you don't see the email in your Primary Inbox, please check your <strong>Spam / Junk</strong> folder or <strong>Promotions</strong> tab.
-              </div>
-            </div>
-
             <button
               type="submit"
               disabled={isLoading || signupOtp.length !== 6}
@@ -630,7 +644,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 </>
               ) : (
                 <>
-                  <span>{mode === 'sign-in' ? 'Sign In with Email' : 'Create Free Account'}</span>
+                  <span>{mode === 'sign-in' ? 'Sign In with Email' : 'Send Verification Code'}</span>
                   <ArrowRight size={16} />
                 </>
               )}

@@ -14,8 +14,6 @@ const baseURL = process.env.BETTER_AUTH_URL
 const trustedOrigins = [
   baseURL,
   'http://localhost:3000',
-  'https://7media.pages.dev',
-  'https://sevenmedia.onrender.com',
   ...(process.env.V0_RUNTIME_URL && process.env.V0_RUNTIME_URL !== baseURL
     ? [process.env.V0_RUNTIME_URL]
     : []),
