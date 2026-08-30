@@ -23,14 +23,34 @@ const siteUrl = getSiteUrl()
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Watch Free Movies, TV Shows & Anime Online | 7MEDIA',
+    default: '7MEDIA — Watch Free Movies, TV Series & Anime Online in 4K UHD',
     template: '%s | 7MEDIA',
   },
   description:
-    "Discover trending movies, TV shows, and anime on 7MEDIA. Browse by genre, provider, language and country, create your personal watchlist, and explore what's popular this week.",
-  generator: 'v0.app',
+    'Stream trending movies, binge TV series, and explore the complete anime ecosystem on 7MEDIA. High-speed 4K discovery, 25+ languages, real-time community chat, watch party sync, and AniList & TMDB open catalogs.',
   applicationName: '7MEDIA',
-  keywords: ['movies', 'tv shows', 'anime', 'streaming', 'watchlist', 'trending'],
+  authors: [{ name: '7MEDIA Team', url: siteUrl }],
+  creator: '7MEDIA Inc.',
+  publisher: '7MEDIA Inc.',
+  category: 'Entertainment',
+  keywords: [
+    '7media',
+    'movies online',
+    'free movie streaming',
+    'watch movies 4k',
+    'watch tv shows free',
+    'watch anime online',
+    'anime english sub and dub',
+    'anilist anime streaming',
+    'tmdb trending movies 2026',
+    'hindi dubbed movies online',
+    'bengali cinema streaming',
+    'anime airing schedule tokyo',
+    'watch party synchronized streaming',
+    'live movie chat community lounge',
+    '4k uhd free cinema',
+    'ad-free movie discovery ecosystem',
+  ],
   robots: {
     index: true,
     follow: true,
@@ -56,9 +76,10 @@ export const metadata: Metadata = {
     type: 'website',
     url: siteUrl,
     siteName: '7MEDIA',
-    title: '7MEDIA — Stream Free Movies, TV Shows & Anime',
+    locale: 'en_US',
+    title: '7MEDIA — Watch Free Movies, TV Shows & Anime in 4K UHD',
     description:
-      'Discover and save your favorite movies and TV shows. Browse by genre, provider, language and country.',
+      'Stream trending movies, binge TV series, and explore the anime universe. 100% legal, zero bloat, live community lounge & synchronized watch parties.',
     images: [
       {
         url: '/og-image.png',
@@ -70,9 +91,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '7MEDIA — Stream Free Movies, TV Shows & Anime',
+    title: '7MEDIA — Watch Free Movies, TV Shows & Anime in 4K UHD',
     description:
-      'Discover and save your favorite movies and TV shows. Browse by genre, provider, language and country.',
+      'Stream trending movies, binge TV series, and explore the anime universe. 100% legal, zero bloat, live community lounge & synchronized watch parties.',
     images: ['/og-image.png'],
   },
   appleWebApp: {
@@ -88,6 +109,35 @@ export const viewport: Viewport = {
   userScalable: true,
 }
 
+const jsonLdWebsite = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: '7MEDIA',
+  url: siteUrl,
+  description: 'The premier next-generation cinema & anime discovery ecosystem. Stream movies, TV shows and anime.',
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: `${siteUrl}/search?q={search_term_string}`,
+    },
+    'query-input': 'required name=search_term_string',
+  },
+}
+
+const jsonLdOrganization = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: '7MEDIA Inc.',
+  url: siteUrl,
+  logo: `${siteUrl}/web-app-manifest-512x512.png`,
+  contactPoint: {
+    '@type': 'ContactPoint',
+    email: '7media.support@gmail.com',
+    contactType: 'customer support',
+  },
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -100,6 +150,15 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Structured JSON-LD Schema.org Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebsite) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdOrganization) }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var r=document.documentElement;var m=document.cookie.match(/(?:^|; )7media-theme=([^;]+)/);var t=m&&decodeURIComponent(m[1]);if(t){var v=t.toLowerCase().replace(/\s+/g,'-');r.dataset.theme=v;r.classList.toggle('dark',t!=='Apple Theme');r.classList.toggle('theme-midnight',t==='Midnight');r.classList.toggle('theme-sakura',t==='Sakura');r.classList.toggle('theme-apple',t==='Apple Theme');r.style.colorScheme='dark'}var p=document.cookie.match(/(?:^|; )7media-prefs=([^;]+)/);if(p){var prefs=JSON.parse(decodeURIComponent(p[1]));if(prefs.quality)r.dataset.quality=String(prefs.quality).toLowerCase();if(prefs.language==='Arabic')r.dir='rtl'}}catch(e){}})();`,

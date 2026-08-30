@@ -2,14 +2,36 @@ import type { MetadataRoute } from 'next'
 import { getSiteUrl } from '@/lib/site'
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = getSiteUrl()
+
   return {
     rules: [
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/api/', '/my-list', '/sign-in', '/sign-up'],
+        disallow: [
+          '/api/',
+          '/admin/',
+          '/my-list',
+          '/history',
+          '/settings',
+          '/profile',
+          '/sign-in',
+          '/sign-up',
+        ],
+      },
+      {
+        userAgent: 'Googlebot',
+        allow: '/',
+        disallow: ['/api/', '/admin/', '/settings', '/profile'],
+      },
+      {
+        userAgent: 'Bingbot',
+        allow: '/',
+        disallow: ['/api/', '/admin/', '/settings', '/profile'],
       },
     ],
-    sitemap: `${getSiteUrl()}/sitemap.xml`,
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   }
 }
