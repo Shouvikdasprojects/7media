@@ -22,6 +22,7 @@ import {
   Users,
   Trophy,
   ShieldCheck,
+  Mail,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
@@ -160,6 +161,8 @@ export function Navbar() {
     { label: t('series'), href: '/series' },
     { label: t('anime'), href: '/anime' },
     { label: 'Calendar', href: '/calendar' },
+    { label: 'Community', href: '/chat' },
+    { label: 'Contact', href: '/contact' },
     { label: 'Party', href: '/party' },
     { label: t('myList'), href: '/my-list' },
   ]
@@ -414,11 +417,27 @@ export function Navbar() {
                   </Link>
 
                   <Link
+                    href="/chat"
+                    onClick={() => setAccountOpen(false)}
+                    className="flex items-center gap-2.5 rounded-2xl px-3 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition"
+                  >
+                    <MessageCircle size={15} /> <span>Community &amp; Chat</span>
+                  </Link>
+
+                  <Link
                     href="/party"
                     onClick={() => setAccountOpen(false)}
                     className="flex items-center gap-2.5 rounded-2xl px-3 py-2 text-xs font-semibold text-cyan-400 hover:bg-cyan-500/10 transition"
                   >
                     <Users size={15} /> <span>Watch Party Room</span>
+                  </Link>
+
+                  <Link
+                    href="/contact"
+                    onClick={() => setAccountOpen(false)}
+                    className="flex items-center gap-2.5 rounded-2xl px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <Mail size={15} /> <span>Contact Desk</span>
                   </Link>
 
                   <Link
@@ -587,6 +606,20 @@ export function Navbar() {
                   className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-cyan-400 hover:bg-white/10"
                 >
                   <Users size={15} /> Watch Party
+                </Link>
+                <Link
+                  href="/chat"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-white/10"
+                >
+                  <MessageCircle size={15} /> Community
+                </Link>
+                <Link
+                  href="/contact"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-white/80 hover:bg-white/10 hover:text-white"
+                >
+                  <Mail size={15} /> Contact Desk
                 </Link>
                 <Link
                   href="/settings"

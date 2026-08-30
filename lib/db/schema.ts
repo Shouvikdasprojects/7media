@@ -7,6 +7,7 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('emailVerified').notNull().default(false),
   image: text('image'),
+  role: text('role').default('user'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 })
@@ -205,5 +206,32 @@ export const notifications = pgTable('notifications', {
   isRead: boolean('isRead').notNull().default(false),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
 })
+
+export const globalChatMessages = pgTable('global_chat_messages', {
+  id: text('id').primaryKey(),
+  userId: text('userId').references(() => user.id, { onDelete: 'set null' }),
+  userName: text('userName').notNull(),
+  userEmail: text('userEmail'),
+  userImage: text('userImage'),
+  userRole: text('userRole').notNull().default('user'), // 'admin' | 'mod' | 'vip' | 'user'
+  content: text('content').notNull(),
+  mediaTag: text('mediaTag'), // Optional JSON or title name for recommendations
+  likesCount: integer('likesCount').notNull().default(0),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+})
+
+export const directMessages = pgTable('direct_messages', {
+  id: text('id').primaryKey(),
+  senderId: text('senderId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  receiverId: text('receiverId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  isRead: boolean('isRead').notNull().default(false),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+})
+
 
 

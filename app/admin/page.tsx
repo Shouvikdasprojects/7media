@@ -44,6 +44,7 @@ import {
   Eye,
   Megaphone,
   Filter,
+  Crown,
 } from 'lucide-react'
 
 export default function AdminDashboardPage() {
@@ -400,6 +401,14 @@ export default function AdminDashboardPage() {
             <Radio size={15} />
             <span>Broadcast Alerts</span>
           </button>
+
+          <Link
+            href="/chat"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 transition cursor-pointer shrink-0 shadow-sm"
+          >
+            <Crown size={15} />
+            <span>Live Chat &amp; Direct Messages 👑</span>
+          </Link>
         </div>
 
         {/* TAB 1: OVERVIEW & TELEMETRY */}
