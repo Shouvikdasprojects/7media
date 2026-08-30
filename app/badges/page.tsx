@@ -312,6 +312,61 @@ export default function BadgesPage() {
               )
             })}
           </div>
+
+          {/* Honorary Creator & Architect Badge Spotlight */}
+          <div className="mt-12 p-6 sm:p-8 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-card/70 to-primary/10 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
+            <div className="flex items-center gap-4 text-center sm:text-left">
+              <div className="h-16 w-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_25px_rgba(245,158,11,0.25)]">
+                <Crown size={32} />
+              </div>
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                  <Sparkles size={11} /> Master Architect
+                </div>
+                <h3 className="text-xl font-bold font-display uppercase tracking-tight text-white">
+                  Shouvik Das (Founder &amp; Creator)
+                </h3>
+                <p className="text-xs text-zinc-300 max-w-xl leading-relaxed">
+                  Conceived, engineered, and designed the entire 7MEDIA ecosystem and its gamified leveling architecture.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap justify-center shrink-0">
+              <a
+                href="https://shouvikdasportfolio.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider transition shadow-md cursor-pointer"
+              >
+                Portfolio
+              </a>
+              <a
+                href="https://github.com/Shouvikdasprojects"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-bold transition cursor-pointer"
+              >
+                GitHub
+              </a>
+              <a
+                href="https://x.com/shouvikdas155"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-bold transition cursor-pointer font-mono"
+              >
+                𝕏 Twitter
+              </a>
+              <a
+                href="https://heylink.me/ShouvikDas/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-emerald-400 text-xs font-bold transition cursor-pointer"
+              >
+                Linktree
+              </a>
+            </div>
+          </div>
         </div>
       </main>
 

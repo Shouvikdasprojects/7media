@@ -498,6 +498,53 @@ export function Navbar() {
                   >
                     <CircleHelp size={15} /> {t('helpFaq')}
                   </Link>
+
+                  {/* Creator Spotlight */}
+                  <div className="mt-2.5 p-3 rounded-2xl bg-gradient-to-r from-primary/15 via-rose-500/10 to-amber-500/10 border border-primary/20 text-center">
+                    <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-accent uppercase tracking-wider mb-1">
+                      <Sparkles size={11} /> Lead Architect
+                    </div>
+                    <p className="text-xs font-bold text-white">
+                      Shouvik Das
+                    </p>
+                    <div className="flex items-center justify-center gap-2 mt-2 text-[10px]">
+                      <a
+                        href="https://shouvikdasportfolio.vercel.app/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline font-bold"
+                      >
+                        Portfolio
+                      </a>
+                      <span className="text-white/20">•</span>
+                      <a
+                        href="https://github.com/Shouvikdasprojects"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-white/70 hover:text-white transition"
+                      >
+                        GitHub
+                      </a>
+                      <span className="text-white/20">•</span>
+                      <a
+                        href="https://x.com/shouvikdas155"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-white/70 hover:text-white transition font-mono"
+                      >
+                        𝕏
+                      </a>
+                      <span className="text-white/20">•</span>
+                      <a
+                        href="https://heylink.me/ShouvikDas/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-400 hover:underline font-bold"
+                      >
+                        Linktree
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -635,6 +682,53 @@ export function Navbar() {
                 >
                   <Languages size={15} /> {language}
                 </button>
+              </div>
+
+              {/* Creator Card in Mobile Drawer */}
+              <div className="mt-3 p-3 rounded-2xl bg-gradient-to-r from-primary/20 via-rose-500/10 to-amber-500/10 border border-primary/25 text-center">
+                <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-accent uppercase tracking-wider mb-0.5">
+                  <Sparkles size={11} /> Architect &amp; Developer
+                </div>
+                <p className="text-xs font-bold text-white">
+                  Shouvik Das
+                </p>
+                <div className="flex items-center justify-center gap-3 mt-2 text-xs">
+                  <a
+                    href="https://shouvikdasportfolio.vercel.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-bold"
+                  >
+                    Portfolio
+                  </a>
+                  <span className="text-white/20">•</span>
+                  <a
+                    href="https://github.com/Shouvikdasprojects"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white/80 hover:text-white"
+                  >
+                    GitHub
+                  </a>
+                  <span className="text-white/20">•</span>
+                  <a
+                    href="https://x.com/shouvikdas155"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white/80 hover:text-white font-mono"
+                  >
+                    𝕏
+                  </a>
+                  <span className="text-white/20">•</span>
+                  <a
+                    href="https://heylink.me/ShouvikDas/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:underline font-bold"
+                  >
+                    Linktree
+                  </a>
+                </div>
               </div>
             </div>
           </div>
