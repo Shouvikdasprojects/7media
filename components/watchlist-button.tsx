@@ -40,6 +40,7 @@ import {
   dispatchCatalogsUpdated,
   dispatchWatchlistUpdated,
 } from '@/lib/catalogs-shared'
+import { touchGuestStorage, checkAndCleanGuestStorage } from '@/lib/guest-storage'
 
 interface WatchlistButtonProps {
   item: {
@@ -95,7 +96,8 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
           }
         } catch {}
       } else {
-        // Guest mode fallback
+        // Guest mode fallback (checks 7-day TTL auto-clear)
+        checkAndCleanGuestStorage()
         try {
           const localSavedCats = localStorage.getItem('7media_catalogs')
           const parsed = localSavedCats ? JSON.parse(localSavedCats) : []
@@ -183,6 +185,7 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
           await addToWatchlist(payload)
         } else {
           try {
+            touchGuestStorage()
             const local = localStorage.getItem('7media_watchlist')
             const list = local ? JSON.parse(local) : []
             if (!list.some((i: any) => (i.tmdbId || i.id) === item.id)) {
@@ -251,6 +254,7 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
     } else {
       if (!saved && !inThisFolder) {
         try {
+          touchGuestStorage()
           const local = localStorage.getItem('7media_watchlist')
           const list = local ? JSON.parse(local) : []
           if (!list.some((i: any) => (i.tmdbId || i.id) === item.id)) {
@@ -334,6 +338,7 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
     } else {
       if (!saved) {
         try {
+          touchGuestStorage()
           const local = localStorage.getItem('7media_watchlist')
           const list = local ? JSON.parse(local) : []
           if (!list.some((i: any) => (i.tmdbId || i.id) === item.id)) {

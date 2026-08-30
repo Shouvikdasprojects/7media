@@ -46,6 +46,7 @@ import {
   dispatchCatalogsUpdated,
   dispatchWatchlistUpdated,
 } from '@/lib/catalogs-shared'
+import { getGuestStorageExpiry, checkAndCleanGuestStorage } from '@/lib/guest-storage'
 
 export type CatalogColor = 'emerald' | 'rose' | 'amber' | 'cyan' | 'purple' | 'pink'
 export type CatalogThumbnail = 'Folder' | 'Clapperboard' | 'Film' | 'Tv' | 'Sparkles' | 'Flame' | 'Star' | 'Heart'
@@ -95,6 +96,7 @@ export default function MyListPage() {
   const [watchedIds, setWatchedIds] = useState<number[]>([])
   const [likedIds, setLikedIds] = useState<number[]>([])
   const [dislikedIds, setDislikedIds] = useState<number[]>([])
+  const [guestExpiry, setGuestExpiry] = useState<{ daysRemaining: number; isExpiringSoon: boolean } | null>(null)
 
   // 1. SWR Data from Database
   const { data: watchlistData, mutate: mutateWatchlist } = useSWR(
@@ -115,6 +117,9 @@ export default function MyListPage() {
   // Reload local storage helper
   const reloadLocalStorage = useCallback(() => {
     try {
+      checkAndCleanGuestStorage()
+      setGuestExpiry(getGuestStorageExpiry())
+
       const savedCats = localStorage.getItem('7media_catalogs')
       if (savedCats) {
         setCatalogs(mergeWithDefaultCatalogs(JSON.parse(savedCats)))
@@ -408,6 +413,32 @@ export default function MyListPage() {
             </button>
           </div>
         </header>
+
+        {/* Guest 7-Day Storage Notification Banner */}
+        {!session?.user && guestExpiry && (
+          <div className="mb-8 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-amber-400">
+                  Guest Mode · Temporary Local Storage
+                </p>
+                <p className="text-xs text-zinc-300 mt-0.5">
+                  Your watchlist is stored locally on this device and will auto-clean in{' '}
+                  <strong className="text-white font-mono">{guestExpiry.daysRemaining} days</strong>. Sign in to save permanently in the cloud!
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/sign-in"
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shrink-0 active:scale-95"
+            >
+              Sign In to Save
+            </Link>
+          </div>
+        )}
 
         {/* 1. COLLECTIONS METRICS */}
         <section className="mb-10">

@@ -28,6 +28,7 @@ import dynamic from 'next/dynamic'
 import { useSession, signOut } from '@/lib/auth-client'
 import { useI18n } from '@/lib/i18n/context'
 import { verifyIsAdmin } from '@/app/actions/admin'
+import { checkAndCleanGuestStorage } from '@/lib/guest-storage'
 import { Logo } from './logo'
 
 const SearchModal = dynamic(() => import('./search-modal').then((m) => m.SearchModal), { ssr: false })
@@ -70,6 +71,7 @@ export function Navbar() {
       verifyIsAdmin().then((res) => setIsAdminUser(Boolean(res?.isAdmin)))
     } else {
       setIsAdminUser(false)
+      checkAndCleanGuestStorage()
     }
   }, [session?.user])
 
