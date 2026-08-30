@@ -74,7 +74,7 @@ export default function ChatPage() {
   const [showMediaTagBox, setShowMediaTagBox] = useState(false)
   const [isSendingGlobal, setIsSendingGlobal] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
-  const globalMessagesEndRef = useRef<HTMLDivElement>(null)
+  const globalContainerRef = useRef<HTMLDivElement>(null)
 
   // Global Chat SWR Polling (every 3.5s)
   const {
@@ -94,7 +94,7 @@ export default function ChatPage() {
   const [isSendingDm, setIsSendingDm] = useState(false)
   const [dmSearchQuery, setDmSearchQuery] = useState('')
   const [showMobileDmList, setShowMobileDmList] = useState(true)
-  const dmMessagesEndRef = useRef<HTMLDivElement>(null)
+  const dmContainerRef = useRef<HTMLDivElement>(null)
 
   // DM Threads Polling (every 4s)
   const {
@@ -145,16 +145,16 @@ export default function ChatPage() {
     }
   }, [activeTab, selectedPartnerId, threadsData])
 
-  // Scroll to bottom on new messages
+  // Scroll strictly INSIDE the chat container without shifting webpage / footer
   useEffect(() => {
-    if (activeTab === 'global') {
-      globalMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (activeTab === 'global' && globalContainerRef.current) {
+      globalContainerRef.current.scrollTop = globalContainerRef.current.scrollHeight
     }
   }, [globalData?.messages?.length, activeTab])
 
   useEffect(() => {
-    if (activeTab === 'dm' && selectedPartnerId) {
-      dmMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (activeTab === 'dm' && selectedPartnerId && dmContainerRef.current) {
+      dmContainerRef.current.scrollTop = dmContainerRef.current.scrollHeight
     }
   }, [activeDmData?.messages?.length, activeTab, selectedPartnerId])
 
@@ -396,7 +396,7 @@ export default function ChatPage() {
               </div>
 
               {/* Chat Messages Stream */}
-              <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 scrollbar-thin">
+              <div ref={globalContainerRef} className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 scrollbar-thin">
                 {isGlobalLoading && !globalData?.messages?.length ? (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
                     <Loader2 size={32} className="animate-spin text-primary" />
@@ -519,7 +519,6 @@ export default function ChatPage() {
                     )
                   })
                 )}
-                <div ref={globalMessagesEndRef} />
               </div>
 
               {/* Quick Emojis Bar */}
@@ -853,7 +852,7 @@ export default function ChatPage() {
                   </div>
 
                   {/* Messages Stream */}
-                  <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-3.5 scrollbar-thin">
+                  <div ref={dmContainerRef} className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-3.5 scrollbar-thin">
                     {isActiveDmLoading && !activeDmData?.messages?.length ? (
                       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
                         <Loader2 size={32} className="animate-spin text-primary" />
@@ -908,7 +907,6 @@ export default function ChatPage() {
                         )
                       })
                     )}
-                    <div ref={dmMessagesEndRef} />
                   </div>
 
                   {/* Message Input Field */}
