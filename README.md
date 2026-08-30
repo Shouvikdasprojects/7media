@@ -134,6 +134,23 @@
 
 ---
 
+## 👨‍💻 Creator & Lead Architect
+
 <div align="center">
-Made with ❤️ for cinephiles & anime lovers worldwide • © 2026 7MEDIA Inc.
+
+### **Shouvik Das**
+*Full-Stack Engineer • UI/UX Designer • Cinema & Anime Enthusiast*
+
+[![Portfolio](https://img.shields.io/badge/Portfolio-shouvikdasportfolio.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://shouvikdasportfolio.vercel.app/)
+[![GitHub](https://img.shields.io/badge/GitHub-Shouvikdasprojects-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Shouvikdasprojects)
+[![Twitter](https://img.shields.io/badge/Twitter%20%2F%20X-@shouvikdas155-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/shouvikdas155)
+[![Instagram](https://img.shields.io/badge/Instagram-@shouvik__das__official-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/shouvik_das_official)
+[![Linktree](https://img.shields.io/badge/Linktree-ShouvikDas-43E660?style=for-the-badge&logo=linktree&logoColor=black)](https://heylink.me/ShouvikDas/)
+
+</div>
+
+---
+
+<div align="center">
+Made with ❤️ by <strong>Shouvik Das</strong> for cinephiles & anime lovers worldwide • © 2026 7MEDIA Inc.
 </div>

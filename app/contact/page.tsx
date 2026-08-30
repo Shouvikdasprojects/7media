@@ -244,6 +244,64 @@ export default function ContactPage() {
             </form>
           )}
         </div>
+
+        {/* Developer & Architecture Direct Channels */}
+        <div className="mt-8 p-6 sm:p-8 rounded-3xl border border-primary/20 bg-gradient-to-r from-card/90 via-card/60 to-primary/5 shadow-xl backdrop-blur-md">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
+            <div className="space-y-2 text-center sm:text-left">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold uppercase tracking-wider">
+                <Sparkles size={12} /> Lead Developer &amp; Creator
+              </div>
+              <h3 className="text-xl font-bold text-foreground">Shouvik Das</h3>
+              <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
+                Connect directly for engineering collaborations, API integrations, technical feedback, or custom feature proposals.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap justify-center shrink-0">
+              <a
+                href="https://shouvikdasportfolio.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold transition hover:bg-primary/90 shadow-sm cursor-pointer"
+              >
+                Portfolio
+              </a>
+              <a
+                href="https://github.com/Shouvikdasprojects"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-bold transition cursor-pointer"
+              >
+                GitHub
+              </a>
+              <a
+                href="https://x.com/shouvikdas155"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-bold transition cursor-pointer font-mono"
+              >
+                𝕏 Twitter
+              </a>
+              <a
+                href="https://www.instagram.com/shouvik_das_official"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-bold transition cursor-pointer text-pink-400"
+              >
+                Instagram
+              </a>
+              <a
+                href="https://heylink.me/ShouvikDas/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-bold transition cursor-pointer text-emerald-400"
+              >
+                Linktree
+              </a>
+            </div>
+          </div>
+        </div>
       </main>
 
       <Footer />

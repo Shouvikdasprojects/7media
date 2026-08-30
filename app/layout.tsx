@@ -29,9 +29,12 @@ export const metadata: Metadata = {
   description:
     'Stream trending movies, binge TV series, and explore the complete anime ecosystem on 7MEDIA. High-speed 4K discovery, 25+ languages, real-time community chat, watch party sync, and AniList & TMDB open catalogs.',
   applicationName: '7MEDIA',
-  authors: [{ name: '7MEDIA Team', url: siteUrl }],
-  creator: '7MEDIA Inc.',
-  publisher: '7MEDIA Inc.',
+  authors: [
+    { name: 'Shouvik Das', url: 'https://shouvikdasportfolio.vercel.app/' },
+    { name: '7MEDIA Team', url: siteUrl },
+  ],
+  creator: 'Shouvik Das',
+  publisher: '7MEDIA Inc. (Shouvik Das)',
   category: 'Entertainment',
   keywords: [
     '7media',
@@ -131,6 +134,24 @@ const jsonLdOrganization = {
   name: '7MEDIA Inc.',
   url: siteUrl,
   logo: `${siteUrl}/web-app-manifest-512x512.png`,
+  founder: {
+    '@type': 'Person',
+    name: 'Shouvik Das',
+    url: 'https://shouvikdasportfolio.vercel.app/',
+    sameAs: [
+      'https://github.com/Shouvikdasprojects',
+      'https://x.com/shouvikdas155',
+      'https://www.instagram.com/shouvik_das_official',
+      'https://heylink.me/ShouvikDas/',
+    ],
+  },
+  sameAs: [
+    'https://shouvikdasportfolio.vercel.app/',
+    'https://github.com/Shouvikdasprojects',
+    'https://x.com/shouvikdas155',
+    'https://www.instagram.com/shouvik_das_official',
+    'https://heylink.me/ShouvikDas/',
+  ],
   contactPoint: {
     '@type': 'ContactPoint',
     email: '7media.support@gmail.com',

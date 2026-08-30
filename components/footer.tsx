@@ -195,26 +195,85 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar: Copyright, Open Data Attribution & Scroll to Top */}
-        <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border/60 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+        {/* Bottom Bar: Copyright, Creator Attribution, Socials & Scroll to Top */}
+        <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6 pt-6 border-t border-border/60 text-xs text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
             <span className="font-semibold text-foreground">&copy; {new Date().getFullYear()} 7MEDIA Inc.</span>
-            <span className="text-muted-foreground/40">•</span>
-            <span>Made with passion for cinephiles</span>
-            <span className="text-muted-foreground/40">•</span>
-            <span>Does not host media on private servers</span>
-            <span className="text-muted-foreground/40">•</span>
-            <span className="text-zinc-300 font-medium">Powered by TMDB &amp; AniList APIs</span>
+            <span className="hidden sm:inline text-muted-foreground/40">•</span>
+            <span>
+              Architected &amp; Built with <span className="text-rose-500">❤️</span> by{' '}
+              <a
+                href="https://shouvikdasportfolio.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-foreground hover:text-primary transition underline underline-offset-4 decoration-primary/40"
+              >
+                Shouvik Das
+              </a>
+            </span>
           </div>
 
-          <button
-            type="button"
-            onClick={scrollToTop}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-secondary/80 hover:bg-secondary border border-border text-foreground text-xs font-bold transition-all touch-manipulation active:scale-95 shadow-sm cursor-pointer"
-          >
-            <ArrowUp size={14} />
-            <span>{t('backToTop')}</span>
-          </button>
+          {/* Creator Social Channels */}
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <a
+              href="https://shouvikdasportfolio.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-secondary/80 hover:bg-secondary border border-border text-foreground hover:text-primary transition"
+              title="Shouvik Das Portfolio"
+            >
+              <Globe2 size={15} />
+            </a>
+            <a
+              href="https://github.com/Shouvikdasprojects"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-secondary/80 hover:bg-secondary border border-border text-foreground hover:text-primary transition"
+              title="GitHub Profile"
+            >
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+            </a>
+            <a
+              href="https://x.com/shouvikdas155"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-secondary/80 hover:bg-secondary border border-border text-foreground hover:text-primary transition font-mono font-bold text-xs"
+              title="Twitter / X"
+            >
+              𝕏
+            </a>
+            <a
+              href="https://www.instagram.com/shouvik_das_official"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-secondary/80 hover:bg-secondary border border-border text-foreground hover:text-pink-400 transition"
+              title="Instagram"
+            >
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+              </svg>
+            </a>
+            <a
+              href="https://heylink.me/ShouvikDas/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-secondary/80 hover:bg-secondary border border-border text-emerald-400 font-bold transition"
+              title="Linktree"
+            >
+              🌲
+            </a>
+
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="ml-2 flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-secondary/80 hover:bg-secondary border border-border text-foreground text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm"
+            >
+              <ArrowUp size={14} />
+              <span>{t('backToTop')}</span>
+            </button>
+          </div>
         </div>
       </div>
     </footer>
