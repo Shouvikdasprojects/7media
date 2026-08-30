@@ -1,4 +1,10 @@
 import { MongoClient, Db } from 'mongodb'
+import dns from 'dns'
+
+// Ensure reliable SRV DNS resolution across all ISPs and OS environments
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1'])
+} catch {}
 
 const uri = process.env.MONGODB_URI || process.env.MONGODB_CHAT_URI || ''
 const options = {}
