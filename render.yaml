@@ -1,0 +1,18 @@
+﻿services:
+  - type: web
+    name: 7media
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: TMDB_API_KEY
+        value: fe69221eb4a5511fd9ea5889f9e24ae3
+      - key: SMTP_USER
+        value: 7media.support@gmail.com
+      - key: GMAIL_USER
+        value: 7media.support@gmail.com
+      - key: ADMIN_EMAIL
+        value: shouvikdaswork@gmail.com
