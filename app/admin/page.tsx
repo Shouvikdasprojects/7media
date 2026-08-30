@@ -14,6 +14,8 @@ import {
   replyToContactMessage,
   deleteContactMessage,
   sendSystemBroadcast,
+  getAdminRecentComments,
+  deleteAdminComment,
 } from '@/app/actions/admin'
 import {
   ShieldAlert,
@@ -34,6 +36,14 @@ import {
   Shield,
   MessageSquare,
   Sparkles,
+  Server,
+  Activity,
+  Copy,
+  Check,
+  Lock,
+  Eye,
+  Megaphone,
+  Filter,
 } from 'lucide-react'
 
 export default function AdminDashboardPage() {
@@ -41,7 +51,7 @@ export default function AdminDashboardPage() {
   const { data: session, isPending: sessionLoading } = useSession()
 
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'inbox' | 'broadcast'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'inbox' | 'comments' | 'broadcast'>('overview')
 
   // Stats
   const [stats, setStats] = useState<any>(null)
@@ -51,14 +61,20 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<any[]>([])
   const [userSearch, setUserSearch] = useState('')
   const [usersLoading, setUsersLoading] = useState(false)
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
 
   // Inbox
   const [messages, setMessages] = useState<any[]>([])
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'unread' | 'replied'>('all')
   const [inboxLoading, setInboxLoading] = useState(false)
   const [replyModalOpen, setReplyModalOpen] = useState(false)
   const [activeMessage, setActiveMessage] = useState<any>(null)
   const [replyText, setReplyText] = useState('')
   const [isSendingReply, setIsSendingReply] = useState(false)
+
+  // Comments Moderation
+  const [recentComments, setRecentComments] = useState<any[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
 
   // Broadcast
   const [broadcastTitle, setBroadcastTitle] = useState('')
@@ -75,7 +91,7 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToast(null), 4000)
   }
 
-  // 1. Initial Admin Verification
+  // 1. Initial Admin Verification (Server-Side Session Check)
   useEffect(() => {
     async function checkAuth() {
       const res = await verifyIsAdmin()
@@ -86,6 +102,7 @@ export default function AdminDashboardPage() {
         loadStats()
         loadUsers()
         loadInbox()
+        loadRecentComments()
       }
     }
     if (!sessionLoading) {
@@ -114,9 +131,22 @@ export default function AdminDashboardPage() {
     if (res.success) setMessages(res.messages || [])
   }
 
+  const loadRecentComments = async () => {
+    setCommentsLoading(true)
+    const res = await getAdminRecentComments(40)
+    setCommentsLoading(false)
+    if (res.success) setRecentComments(res.comments || [])
+  }
+
   const handleSearchUsers = (e: React.FormEvent) => {
     e.preventDefault()
     loadUsers(userSearch)
+  }
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedEmail(text)
+    setTimeout(() => setCopiedEmail(null), 2000)
   }
 
   const handleOpenReplyModal = (msg: any) => {
@@ -134,7 +164,7 @@ export default function AdminDashboardPage() {
     setIsSendingReply(false)
 
     if (res.success) {
-      showToast(res.message || 'Reply dispatched via 7media.support@gmail.com!')
+      showToast(res.message || 'Support reply dispatched!')
       setReplyModalOpen(false)
       loadInbox()
     } else {
@@ -146,10 +176,21 @@ export default function AdminDashboardPage() {
     if (!confirm('Are you sure you want to delete this message?')) return
     const res = await deleteContactMessage(id)
     if (res.success) {
-      showToast('Message deleted.')
+      showToast('Message removed.')
       loadInbox()
     } else {
       showToast('Failed to delete message', 'error')
+    }
+  }
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Are you sure you want to remove this comment?')) return
+    const res = await deleteAdminComment(commentId)
+    if (res.success) {
+      showToast('Comment removed from title.')
+      setRecentComments((prev) => prev.filter((c) => c.id !== commentId))
+    } else {
+      showToast(res.error || 'Failed to delete comment', 'error')
     }
   }
 
@@ -176,12 +217,21 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // Filter inbox messages
+  const filteredMessages = messages.filter((m) => {
+    if (inboxFilter === 'unread') return m.status === 'unread'
+    if (inboxFilter === 'replied') return m.status === 'replied'
+    return true
+  })
+
   if (sessionLoading || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-sm font-bold text-muted-foreground">Verifying 7MEDIA Admin Privileges...</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Verifying Master Security Clearance...
+          </p>
         </div>
       </div>
     )
@@ -192,20 +242,30 @@ export default function AdminDashboardPage() {
       <div className="min-h-screen bg-background text-foreground flex flex-col">
         <Navbar />
         <main className="flex-1 flex items-center justify-center p-6">
-          <div className="max-w-md w-full p-8 rounded-3xl border border-destructive/30 bg-destructive/10 text-center space-y-4 backdrop-blur-xl">
+          <div className="max-w-md w-full p-8 rounded-3xl border border-destructive/30 bg-destructive/10 text-center space-y-4 backdrop-blur-xl shadow-2xl">
             <div className="w-16 h-16 rounded-2xl bg-destructive/20 text-destructive flex items-center justify-center mx-auto">
               <ShieldAlert size={32} />
             </div>
-            <h1 className="text-2xl font-black font-display uppercase tracking-tight text-foreground">Access Restricted</h1>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              This Control Panel is strictly reserved for authenticated 7MEDIA Platform Administrators (<code>shouvikdaswork@gmail.com</code>).
+            <h1 className="text-2xl font-black font-display uppercase tracking-tight text-foreground">
+              Access Restricted
+            </h1>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This Master Control Hub is strictly reserved for authenticated <strong>7MEDIA Platform Administrators</strong> with verified security credentials. All administrative functions and database operations are protected.
             </p>
-            <Link
-              href="/"
-              className="inline-block px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider hover:bg-primary/90 transition shadow-md"
-            >
-              Return to Home
-            </Link>
+            <div className="pt-2 flex flex-col gap-2">
+              <Link
+                href="/sign-in"
+                className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider hover:bg-primary/90 transition shadow-md"
+              >
+                Sign In with Admin Account
+              </Link>
+              <Link
+                href="/"
+                className="w-full py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground font-bold text-xs uppercase tracking-wider transition"
+              >
+                Return to Home
+              </Link>
+            </div>
           </div>
         </main>
         <Footer />
@@ -232,7 +292,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Admin Header */}
+        {/* Admin Header Banner */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 pb-6 border-b border-border">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary via-rose-600 to-amber-500 p-0.5 shadow-lg shadow-primary/20">
@@ -243,31 +303,32 @@ export default function AdminDashboardPage() {
             <div>
               <div className="flex items-center gap-2.5">
                 <h1 className="text-2xl sm:text-3xl font-black font-display uppercase tracking-tight text-foreground">
-                  7MEDIA Admin Panel
+                  7MEDIA Master Admin Hub
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
-                  Master Root
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <Lock size={10} /> Authenticated
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Global Network Oversight, Contact Desk Dispatch &amp; Community Control
+                Global Infrastructure Oversight, User Management, Community Moderation &amp; Broadcast Dispatcher
               </p>
             </div>
           </div>
 
-          {/* Quick Refresh */}
+          {/* Quick Refresh & Telemetry */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
                 loadStats()
                 loadUsers()
                 loadInbox()
-                showToast('Dashboard reloaded.')
+                loadRecentComments()
+                showToast('Telemetry and records synchronized.')
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary/60 hover:bg-secondary border border-border text-xs font-bold uppercase tracking-wider transition active:scale-95 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary/70 hover:bg-secondary border border-border text-xs font-bold uppercase tracking-wider transition active:scale-95 cursor-pointer"
             >
-              <RefreshCw size={14} className={statsLoading || usersLoading || inboxLoading ? 'animate-spin' : ''} />
-              <span>Sync Live Data</span>
+              <RefreshCw size={14} className={statsLoading || usersLoading || inboxLoading || commentsLoading ? 'animate-spin' : ''} />
+              <span>Sync Telemetry</span>
             </button>
           </div>
         </div>
@@ -317,6 +378,18 @@ export default function AdminDashboardPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('comments')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition cursor-pointer shrink-0 ${
+              activeTab === 'comments'
+                ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
+                : 'bg-card border border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <MessageSquare size={15} />
+            <span>Community Moderation</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('broadcast')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition cursor-pointer shrink-0 ${
               activeTab === 'broadcast'
@@ -329,9 +402,10 @@ export default function AdminDashboardPage() {
           </button>
         </div>
 
-        {/* TAB 1: OVERVIEW */}
+        {/* TAB 1: OVERVIEW & TELEMETRY */}
         {activeTab === 'overview' && (
           <div className="space-y-8 animate-in fade-in duration-200">
+            {/* Primary Metrics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-6 rounded-3xl border border-border bg-card/60 backdrop-blur-md space-y-2">
                 <div className="flex items-center justify-between text-muted-foreground">
@@ -339,7 +413,7 @@ export default function AdminDashboardPage() {
                   <Users size={18} className="text-primary" />
                 </div>
                 <p className="text-3xl font-black font-display text-foreground">{stats?.totalUsers ?? '...'}</p>
-                <p className="text-[11px] text-muted-foreground">Registered on 7MEDIA</p>
+                <p className="text-[11px] text-muted-foreground">Registered on 7MEDIA Platform</p>
               </div>
 
               <div className="p-6 rounded-3xl border border-border bg-card/60 backdrop-blur-md space-y-2">
@@ -353,58 +427,92 @@ export default function AdminDashboardPage() {
 
               <div className="p-6 rounded-3xl border border-border bg-card/60 backdrop-blur-md space-y-2">
                 <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-xs font-bold uppercase tracking-wider">Total Catalogs</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">User Catalogs &amp; Lists</span>
                   <Sparkles size={18} className="text-amber-400" />
                 </div>
                 <p className="text-3xl font-black font-display text-foreground">{stats?.totalCatalogs ?? '...'}</p>
-                <p className="text-[11px] text-muted-foreground">User custom lists</p>
+                <p className="text-[11px] text-muted-foreground">Custom curated playlists</p>
               </div>
 
               <div className="p-6 rounded-3xl border border-border bg-card/60 backdrop-blur-md space-y-2">
                 <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-xs font-bold uppercase tracking-wider">Contact Inquiries</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">Support Inquiries</span>
                   <Inbox size={18} className="text-rose-400" />
                 </div>
                 <p className="text-3xl font-black font-display text-foreground">{stats?.totalMessages ?? '...'}</p>
-                <p className="text-[11px] text-rose-400 font-bold">{stats?.unreadMessages ?? 0} Pending unread</p>
+                <p className="text-[11px] text-rose-400 font-bold">{stats?.unreadMessages ?? 0} Pending response</p>
               </div>
             </div>
 
-            {/* System Status Indicators */}
+            {/* Production Health & Infrastructure Status */}
             <div className="p-6 rounded-3xl border border-border bg-card/60 backdrop-blur-md space-y-4">
-              <h3 className="text-sm font-black font-display uppercase tracking-wider text-foreground">
-                Production Health &amp; Gateway Nodes
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black font-display uppercase tracking-wider text-foreground flex items-center gap-2">
+                  <Activity size={16} className="text-emerald-400" />
+                  <span>Production Telemetry &amp; Gateway Status</span>
+                </h3>
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                  ALL SYSTEMS OPERATIONAL
+                </span>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex items-center gap-3.5">
+                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)] shrink-0" />
                   <div>
                     <p className="text-xs font-bold text-foreground">Cloudflare Edge Gateway</p>
-                    <p className="text-[11px] text-muted-foreground">7media.pages.dev (Active)</p>
+                    <p className="text-[11px] text-muted-foreground">Global CDN &amp; DDoS Shield Active</p>
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex items-center gap-3.5">
+                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)] shrink-0" />
                   <div>
                     <p className="text-xs font-bold text-foreground">Neon PostgreSQL Database</p>
-                    <p className="text-[11px] text-muted-foreground">Pooler Connected (Active)</p>
+                    <p className="text-[11px] text-muted-foreground">Connection Pooler Active (Encrypted)</p>
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                <div className="p-4 rounded-2xl bg-secondary/40 border border-border flex items-center gap-3.5">
+                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)] shrink-0" />
                   <div>
                     <p className="text-xs font-bold text-foreground">Gmail SMTP Dispatcher</p>
-                    <p className="text-[11px] text-muted-foreground">7media.support@gmail.com</p>
+                    <p className="text-[11px] text-muted-foreground">Nodemailer Automated Dispatcher</p>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Quick Admin Actions */}
+            <div className="p-6 rounded-3xl border border-border bg-card/60 backdrop-blur-md space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Quick Platform Actions
+              </h3>
+              <div className="flex flex-wrap gap-2.5">
+                <button
+                  onClick={() => setActiveTab('broadcast')}
+                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 transition shadow-sm cursor-pointer"
+                >
+                  📢 Publish Global Alert
+                </button>
+                <button
+                  onClick={() => setActiveTab('inbox')}
+                  className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold uppercase tracking-wider transition border border-border cursor-pointer"
+                >
+                  📬 View Support Inbox ({stats?.unreadMessages || 0})
+                </button>
+                <button
+                  onClick={() => setActiveTab('comments')}
+                  className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold uppercase tracking-wider transition border border-border cursor-pointer"
+                >
+                  💬 Moderate Comments
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 2: USERS */}
+        {/* TAB 2: USERS & AUTH */}
         {activeTab === 'users' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Search Bar */}
@@ -455,7 +563,18 @@ export default function AdminDashboardPage() {
                             <span className="font-bold text-foreground">{u.name || 'Anonymous User'}</span>
                           </div>
                         </td>
-                        <td className="p-4 font-mono text-muted-foreground">{u.email}</td>
+                        <td className="p-4 font-mono text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <span>{u.email}</span>
+                            <button
+                              onClick={() => handleCopy(u.email)}
+                              className="text-muted-foreground hover:text-foreground transition cursor-pointer"
+                              title="Copy email"
+                            >
+                              {copiedEmail === u.email ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                            </button>
+                          </div>
+                        </td>
                         <td className="p-4">
                           {u.emailVerified ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -469,13 +588,13 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="p-4">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                               u.role === 'admin'
                                 ? 'bg-primary/20 text-primary border border-primary/30'
                                 : 'bg-secondary text-muted-foreground border border-border'
                             }`}
                           >
-                            {u.role || 'user'}
+                            {u.role === 'admin' ? 'Master Admin' : 'Standard User'}
                           </span>
                         </td>
                         <td className="p-4 text-muted-foreground">
@@ -500,21 +619,47 @@ export default function AdminDashboardPage() {
         {/* TAB 3: CONTACT INBOX */}
         {activeTab === 'inbox' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black font-display uppercase tracking-tight text-foreground">
-                Contact Desk Inquiries ({messages.length})
-              </h2>
-              <button
-                onClick={loadInbox}
-                className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <RefreshCw size={13} className={inboxLoading ? 'animate-spin' : ''} />
-                <span>Refresh</span>
-              </button>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black font-display uppercase tracking-tight text-foreground">
+                  Support Desk Inquiries ({messages.length})
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  View incoming questions and dispatch official email replies from 7media.support@gmail.com.
+                </p>
+              </div>
+
+              {/* Status Filter Buttons */}
+              <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-secondary/60 border border-border text-xs font-bold">
+                <button
+                  onClick={() => setInboxFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+                    inboxFilter === 'all' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  All ({messages.length})
+                </button>
+                <button
+                  onClick={() => setInboxFilter('unread')}
+                  className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+                    inboxFilter === 'unread' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Unread ({messages.filter((m) => m.status === 'unread').length})
+                </button>
+                <button
+                  onClick={() => setInboxFilter('replied')}
+                  className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+                    inboxFilter === 'replied' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Replied ({messages.filter((m) => m.status === 'replied').length})
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {messages.map((msg) => (
+              {filteredMessages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`p-6 rounded-3xl border transition space-y-4 ${
@@ -564,7 +709,7 @@ export default function AdminDashboardPage() {
                   {msg.replyText && (
                     <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
                       <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                        <CheckCircle2 size={12} /> Dispatched Reply:
+                        <CheckCircle2 size={12} /> Dispatched Support Reply:
                       </p>
                       <p className="text-xs text-foreground/80 whitespace-pre-wrap">{msg.replyText}</p>
                     </div>
@@ -590,25 +735,103 @@ export default function AdminDashboardPage() {
                 </div>
               ))}
 
-              {messages.length === 0 && (
+              {filteredMessages.length === 0 && (
                 <div className="p-12 rounded-3xl border border-border bg-card/60 text-center space-y-2">
                   <Inbox size={32} className="mx-auto text-muted-foreground opacity-50" />
-                  <p className="text-sm font-bold text-foreground">Inbox is Empty</p>
-                  <p className="text-xs text-muted-foreground">No inquiries submitted from the contact desk yet.</p>
+                  <p className="text-sm font-bold text-foreground">No Messages in this view</p>
+                  <p className="text-xs text-muted-foreground">All support inquiries are up to date.</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* TAB 4: BROADCAST */}
+        {/* TAB 4: COMMUNITY COMMENTS MODERATION */}
+        {activeTab === 'comments' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-black font-display uppercase tracking-tight text-foreground">
+                  Global Community Comments ({recentComments.length})
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Monitor live reviews and commentary across all titles. Delete spam or rule violations.
+                </p>
+              </div>
+
+              <button
+                onClick={loadRecentComments}
+                className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <RefreshCw size={13} className={commentsLoading ? 'animate-spin' : ''} />
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3.5">
+              {recentComments.map((c) => (
+                <div
+                  key={c.id}
+                  className="p-5 rounded-2xl border border-border bg-card/60 backdrop-blur-md space-y-2.5 hover:border-border/80 transition"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                        {c.userImage ? (
+                          <img src={c.userImage} alt={c.userName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[11px] font-bold">{c.userName?.charAt(0) || 'U'}</span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{c.userName || 'Anonymous Fan'}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">
+                          Target Title: <span className="text-primary font-bold">{c.titleId}</span> ({c.mediaType}) · {new Date(c.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {c.isSpoiler && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          Spoiler
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="p-1.5 rounded-xl border border-border hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition cursor-pointer"
+                        title="Delete comment"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-foreground/90 whitespace-pre-wrap bg-secondary/30 p-3 rounded-xl border border-border/30">
+                    {c.content}
+                  </p>
+                </div>
+              ))}
+
+              {recentComments.length === 0 && (
+                <div className="p-12 rounded-3xl border border-border bg-card/60 text-center space-y-2">
+                  <MessageSquare size={32} className="mx-auto text-muted-foreground opacity-50" />
+                  <p className="text-sm font-bold text-foreground">No Comments Yet</p>
+                  <p className="text-xs text-muted-foreground">Community reviews will appear here in real time.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: BROADCAST NOTIFICATIONS */}
         {activeTab === 'broadcast' && (
           <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-200">
             <div className="p-8 rounded-3xl border border-border bg-card/70 backdrop-blur-md shadow-xl space-y-6">
               <div>
                 <h2 className="text-xl font-black font-display uppercase tracking-tight text-foreground flex items-center gap-2">
                   <Radio size={20} className="text-primary animate-pulse" />
-                  <span>Publish System Broadcast</span>
+                  <span>Publish Global Broadcast</span>
                 </h2>
                 <p className="text-xs text-muted-foreground mt-1">
                   Dispatch an instant live notification banner to all registered users on 7MEDIA.
@@ -672,6 +895,17 @@ export default function AdminDashboardPage() {
                     className="w-full p-4 rounded-2xl border border-border bg-secondary/40 text-xs font-medium text-foreground outline-none focus:border-primary"
                   />
                 </div>
+
+                {/* Broadcast Live Preview */}
+                {broadcastTitle && (
+                  <div className="p-4 rounded-2xl bg-secondary/30 border border-primary/30 space-y-1">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
+                      <Eye size={12} /> Live Drawer Preview:
+                    </p>
+                    <p className="text-xs font-bold text-foreground">{broadcastTitle}</p>
+                    <p className="text-[11px] text-muted-foreground">{broadcastMessage || 'Your message preview will render here...'}</p>
+                  </div>
+                )}
 
                 <button
                   type="submit"

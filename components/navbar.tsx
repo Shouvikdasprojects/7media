@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useSession, signOut } from '@/lib/auth-client'
 import { useI18n } from '@/lib/i18n/context'
+import { verifyIsAdmin } from '@/app/actions/admin'
 import { Logo } from './logo'
 
 const SearchModal = dynamic(() => import('./search-modal').then((m) => m.SearchModal), { ssr: false })
@@ -60,8 +61,17 @@ export function Navbar() {
   const [theme, setTheme] = useState<string>('Dark')
   const [quality, setQuality] = useState<'HD' | 'Default' | 'Performance'>('Default')
   const [avatar, setAvatar] = useState<string | null>(null)
+  const [isAdminUser, setIsAdminUser] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
+
+  useEffect(() => {
+    if (session?.user) {
+      verifyIsAdmin().then((res) => setIsAdminUser(Boolean(res?.isAdmin)))
+    } else {
+      setIsAdminUser(false)
+    }
+  }, [session?.user])
 
   // Real-time synchronization of Avatar & Theme across profile, settings and navbar
   useEffect(() => {
@@ -375,9 +385,7 @@ export function Navbar() {
 
                 {/* Profile Navigation Links */}
                 <div className="py-1.5 space-y-0.5">
-                  {(session?.user?.email === 'shouvikdaswork@gmail.com' ||
-                    session?.user?.email === '7media.support@gmail.com' ||
-                    (session?.user as any)?.role === 'admin') && (
+                  {isAdminUser && (
                     <Link
                       href="/admin"
                       onClick={() => setAccountOpen(false)}

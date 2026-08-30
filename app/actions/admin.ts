@@ -290,3 +290,48 @@ export async function sendSystemBroadcast(params: {
     return { success: false, error: err?.message || 'Failed to publish notification' }
   }
 }
+
+// 7. Get Recent Comments for Global Moderation
+export async function getAdminRecentComments(limit = 50) {
+  const { isAdmin } = await verifyIsAdmin()
+  if (!isAdmin) return { success: false, error: 'Unauthorized', comments: [] }
+
+  try {
+    const rawComments = await db
+      .select({
+        id: comments.id,
+        userId: comments.userId,
+        titleId: comments.titleId,
+        mediaType: comments.mediaType,
+        parentId: comments.parentId,
+        content: comments.content,
+        isSpoiler: comments.isSpoiler,
+        likesCount: comments.likesCount,
+        createdAt: comments.createdAt,
+        userName: user.name,
+        userEmail: user.email,
+        userImage: user.image,
+      })
+      .from(comments)
+      .leftJoin(user, eq(comments.userId, user.id))
+      .orderBy(desc(comments.createdAt))
+      .limit(limit)
+
+    return { success: true, comments: rawComments }
+  } catch (err: any) {
+    return { success: false, error: err?.message, comments: [] }
+  }
+}
+
+// 8. Admin Delete Any Comment
+export async function deleteAdminComment(commentId: string) {
+  const { isAdmin } = await verifyIsAdmin()
+  if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+  try {
+    await db.delete(comments).where(or(eq(comments.id, commentId), eq(comments.parentId, commentId)))
+    return { success: true, message: 'Comment and its replies removed.' }
+  } catch (err: any) {
+    return { success: false, error: err?.message }
+  }
+}
