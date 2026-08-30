@@ -452,6 +452,14 @@ export function AuthForm({ mode }: AuthFormProps) {
               />
             </div>
 
+            {/* Spam Folder Guidance Box */}
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-left text-xs text-amber-200/90 leading-relaxed flex items-start gap-2.5">
+              <Mail size={16} className="text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-amber-300">Important:</strong> If you don't see the email in your Primary Inbox, please check your <strong>Spam / Junk</strong> folder or <strong>Promotions</strong> tab.
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={isLoading || signupOtp.length !== 6}

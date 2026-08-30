@@ -8,6 +8,12 @@ import { and, eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { hashPassword, verifyPassword } from 'better-auth/crypto'
 import nodemailer from 'nodemailer'
+import dns from 'dns'
+
+// Ensure reliable DNS resolution for Gmail SMTP on Windows & Cloud
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1'])
+} catch {}
 
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
 
@@ -566,55 +572,62 @@ export async function requestSignupOtp(data: { name: string; email: string; pass
     const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
     const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
 
-    if (smtpPass) {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass.replace(/\s+/g, ''),
-        },
-      })
+    console.log(`[7MEDIA AUTH] Signup OTP generated for ${cleanEmail} -> Code: ${otpCode}`)
 
-      await transporter.sendMail({
-        from: `"7MEDIA Verification" <${smtpUser}>`,
-        to: cleanEmail,
-        subject: `[7MEDIA] Your Verification Code: ${otpCode}`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-            <div style="background: #e50914; padding: 22px 24px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
-              <p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 1.5px;">Account Email Verification</p>
-            </div>
-            <div style="padding: 28px 24px;">
-              <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #ffffff;">Welcome, ${cleanName}!</h2>
-              <p style="font-size: 13px; color: #a1a1aa; line-height: 1.6; margin-bottom: 20px;">
-                Thank you for joining 7MEDIA. To complete your registration and activate your account, please enter the 6-digit verification code below:
-              </p>
-              
-              <div style="background: #18181b; padding: 24px 20px; border-radius: 14px; margin: 24px 0; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-                <div style="font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #a1a1aa; text-transform: uppercase; margin-bottom: 8px;">Your 6-Digit Code</div>
-                <span style="font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #e50914; font-family: monospace; display: inline-block;">${otpCode}</span>
+    if (smtpPass) {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: smtpUser,
+            pass: smtpPass.replace(/\s+/g, ''),
+          },
+        })
+
+        await transporter.sendMail({
+          from: `"7MEDIA Verification" <${smtpUser}>`,
+          to: cleanEmail,
+          subject: `[7MEDIA] Your Verification Code: ${otpCode}`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+              <div style="background: #e50914; padding: 22px 24px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
+                <p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 1.5px;">Account Email Verification</p>
               </div>
-              
-              <p style="font-size: 12px; color: #71717a; line-height: 1.5;">
-                This code will expire in <strong>15 minutes</strong>. If you did not sign up for a 7MEDIA account, please disregard this message.
-              </p>
+              <div style="padding: 28px 24px;">
+                <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #ffffff;">Welcome, ${cleanName}!</h2>
+                <p style="font-size: 13px; color: #a1a1aa; line-height: 1.6; margin-bottom: 20px;">
+                  Thank you for joining 7MEDIA. To complete your registration and activate your account, please enter the 6-digit verification code below:
+                </p>
+                
+                <div style="background: #18181b; padding: 24px 20px; border-radius: 14px; margin: 24px 0; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                  <div style="font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #a1a1aa; text-transform: uppercase; margin-bottom: 8px;">Your 6-Digit Code</div>
+                  <span style="font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #e50914; font-family: monospace; display: inline-block;">${otpCode}</span>
+                </div>
+                
+                <p style="font-size: 12px; color: #71717a; line-height: 1.5;">
+                  This code will expire in <strong>15 minutes</strong>. If you did not sign up for a 7MEDIA account, please disregard this message.
+                </p>
+              </div>
+              <div style="border-top: 1px solid rgba(255,255,255,0.06); padding: 16px 24px; text-align: center; font-size: 11px; color: #52525b;">
+                &copy; ${new Date().getFullYear()} 7MEDIA Inc. All rights reserved.
+              </div>
             </div>
-            <div style="border-top: 1px solid rgba(255,255,255,0.06); padding: 16px 24px; text-align: center; font-size: 11px; color: #52525b;">
-              &copy; ${new Date().getFullYear()} 7MEDIA Inc. All rights reserved.
-            </div>
-          </div>
-        `,
-      })
+          `,
+        })
+        console.log(`[7MEDIA AUTH] Verification email dispatched successfully to ${cleanEmail}`)
+      } catch (mailErr: any) {
+        console.error('[7MEDIA AUTH] Error dispatching mail:', mailErr?.message || mailErr)
+      }
     }
 
     return {
       success: true,
-      message: `A 6-digit verification code has been sent to ${cleanEmail}.`,
+      message: `A 6-digit verification code has been sent to ${cleanEmail}. Please check your Inbox and Spam folder.`,
     }
   } catch (err) {
     console.error('Error in requestSignupOtp:', err)
-    return { success: false, error: 'Failed to send verification code. Please try again.' }
+    return { success: false, error: 'Failed to generate verification code. Please try again.' }
   }
 }
 
