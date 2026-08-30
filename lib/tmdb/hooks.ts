@@ -86,19 +86,35 @@ export function useTopRatedShows(page = 1) {
   return { data, error, isLoading }
 }
 
+const detailFetcher = async (url: string) => {
+  try {
+    let res = await fetch(url)
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, 600))
+      res = await fetch(url)
+    }
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json.error || (!json.title && !json.name && !json.id)) return null
+    return json
+  } catch {
+    return null
+  }
+}
+
 export function useMovieDetails(movieId: number | null) {
-  const { data, error, isLoading } = useSWR<TMDBMovieDetail>(
-    movieId ? `/api/tmdb/movie/${movieId}` : null,
-    fetcher,
+  const { data, error, isLoading } = useSWR<TMDBMovieDetail | null>(
+    movieId && !isNaN(movieId) ? `/api/tmdb/movie/${movieId}` : null,
+    detailFetcher,
     swrOptions
   )
   return { data, error, isLoading }
 }
 
 export function useShowDetails(showId: number | null) {
-  const { data, error, isLoading } = useSWR<TMDBShowDetail>(
-    showId ? `/api/tmdb/show/${showId}` : null,
-    fetcher,
+  const { data, error, isLoading } = useSWR<TMDBShowDetail | null>(
+    showId && !isNaN(showId) ? `/api/tmdb/show/${showId}` : null,
+    detailFetcher,
     swrOptions
   )
   return { data, error, isLoading }

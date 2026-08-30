@@ -56,8 +56,14 @@ export async function getUserNotifications() {
 
 // 2. Mark Single Notification as Read
 export async function markNotificationAsRead(id: string) {
+  const currentUser = await getSessionUser()
+  if (!currentUser) return { success: false }
+
   try {
-    await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id))
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.id, id), or(eq(notifications.userId, currentUser.id), isNull(notifications.userId))))
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err?.message }

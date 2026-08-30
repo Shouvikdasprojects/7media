@@ -69,6 +69,8 @@ export async function getTitleComments(titleId: string, mediaType: string) {
   }
 }
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'shouvikdaswork@gmail.com'
+
 // 2. Post a New Comment or Reply
 export async function postComment(params: {
   titleId: string
@@ -83,19 +85,25 @@ export async function postComment(params: {
   }
 
   const { titleId, mediaType, content, parentId, isSpoiler } = params
-  if (!content?.trim()) {
+  const trimmed = typeof content === 'string' ? content.trim() : ''
+  if (!trimmed) {
     return { success: false, error: 'Comment cannot be empty.' }
   }
+  if (trimmed.length > 1500) {
+    return { success: false, error: 'Comment is too long (maximum 1,500 characters allowed).' }
+  }
+
+  const sanitizedContent = trimmed.replace(/[\0\x08]/g, '')
 
   try {
     const commentId = `cm_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
     await db.insert(comments).values({
       id: commentId,
       userId: currentUser.id,
-      titleId,
-      mediaType,
+      titleId: String(titleId).slice(0, 50),
+      mediaType: String(mediaType).slice(0, 20),
       parentId: parentId || null,
-      content: content.trim(),
+      content: sanitizedContent,
       isSpoiler: Boolean(isSpoiler),
       likesCount: 0,
       createdAt: new Date(),
@@ -166,7 +174,7 @@ export async function deleteComment(commentId: string) {
     if (!existing) return { success: false, error: 'Comment not found' }
 
     const isMasterAdmin =
-      currentUser.email === 'shouvikdaswork@gmail.com' ||
+      currentUser.email === ADMIN_EMAIL ||
       currentUser.email === '7media.support@gmail.com' ||
       (currentUser as any).role === 'admin'
 

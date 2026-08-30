@@ -130,17 +130,30 @@ export async function GET(
 
     // /api/tmdb/discover/movies and /api/tmdb/discover/shows
     if (slug[0] === 'discover') {
-      const params = {
+      const minRating = searchParams.get('vote_average_gte') || searchParams.get('vote_average.gte') || searchParams.get('minRating')
+      const year = searchParams.get('primary_release_year') || searchParams.get('first_air_date_year') || searchParams.get('year')
+
+      const params: Record<string, any> = {
         page: Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500)),
         with_genres: searchParams.get('with_genres')?.slice(0, 50) || undefined,
         with_original_language: searchParams.get('with_original_language')?.slice(0, 10) || undefined,
         with_watch_providers: searchParams.get('with_watch_providers')?.slice(0, 50) || undefined,
         watch_region: searchParams.get('watch_region')?.slice(0, 10) || undefined,
         sort_by: searchParams.get('sort_by')?.slice(0, 30) || undefined,
-        'vote_count.gte': searchParams.get('vote_count_gte')
-          ? Math.max(0, parseInt(searchParams.get('vote_count_gte')!, 10) || 0)
-          : undefined,
       }
+
+      if (minRating) {
+        params['vote_average.gte'] = parseFloat(minRating)
+        params['vote_count.gte'] = 20
+      }
+      if (year) {
+        if (slug[1] === 'movies' || slug[1] === 'movie') {
+          params['primary_release_year'] = parseInt(year, 10)
+        } else {
+          params['first_air_date_year'] = parseInt(year, 10)
+        }
+      }
+
       if (slug[1] === 'movies' || slug[1] === 'movie') {
         const data = await tmdbClient.discoverMovies(params)
         return NextResponse.json(data)
