@@ -1,170 +1,139 @@
 <div align="center">
 
 # 🎬 7MEDIA
+### *The Ultimate Next-Generation Cinema, TV Series & Anime Discovery Ecosystem*
 
-**The Next-Generation Cinematic & Anime Discovery Ecosystem**
+[![PWA Ready](https://img.shields.io/badge/PWA-Installable_App-a4133c?style=for-the-badge&logo=pwa&logoColor=white)](#-progressive-web-app-pwa)
+[![Ultra HD](https://img.shields.io/badge/Streaming-4K_UHD_&_HDR-E50914?style=for-the-badge&logo=netflix&logoColor=white)](#-movies--tv-series-hub)
+[![AniList](https://img.shields.io/badge/Anime-AniList_GraphQL_Sync-02A9FF?style=for-the-badge&logo=anilist&logoColor=white)](#-anime-portal--tokyo-airing-schedule)
+[![MongoDB Atlas](https://img.shields.io/badge/Community-Live_Global_Chat-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](#-live-community--social-chat-lounge)
+[![25+ Languages](https://img.shields.io/badge/Locales-25+_Languages-F4A261?style=for-the-badge&logo=google-translate&logoColor=white)](#-multilingual--custom-preferences)
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![PostgreSQL](https://img.shields.io/badge/Neon_PostgreSQL-Serverless-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://neon.tech/)
-[![MongoDB](https://img.shields.io/badge/MongoDB_Atlas-Realtime_Chat-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
-[![PWA](https://img.shields.io/badge/PWA-Ready-a4133c?style=for-the-badge&logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
+---
+
+**7MEDIA** is a futuristic, dark glassmorphic digital streaming and media discovery ecosystem. It seamlessly unifies Hollywood blockbusters, global TV series, and Japanese anime into an ultra-fast, visually stunning, community-driven web application with real-time social lounges and synchronized watch parties.
 
 </div>
 
 ---
 
-## 🌟 Overview
+## 🌟 What is 7MEDIA?
 
-**7MEDIA** is a high-performance, dark glassmorphic streaming discovery and community platform. Built with **Next.js 16 (App Router)** and **React 19**, it bridges global entertainment catalogs (TMDB & AniList) with real-time social features like synchronized watch parties, global cinema chat lounges, 1-on-1 admin support desks, and personalized user watchlist syncing.
+7MEDIA is designed for movie lovers and anime enthusiasts who want a modern, ad-bloat-free, luxury streaming experience. Rather than clunky traditional streaming sites, 7MEDIA combines:
 
----
-
-## 🚀 Key Features
-
-### 🎥 Cinema & TV Series Hub
-- **4K UHD & HD Discovery:** Instant filtering by genre, release year, IMDb rating, provider (Netflix, Prime, Disney+, etc.), and spoken language.
-- **Dynamic Watch Pages:** Multiple streaming providers with server switching, season/episode drawers, and episode progress tracking.
-- **Smart Recommendations:** Contextual recommendations powered by TMDB open API.
-
-### 🌸 Anime Portal & Tokyo Airing Calendar
-- **AniList GraphQL Integration:** Deep anime metadata including Japanese titles, romanji, studios, voice actors, character profiles, and trailer embeds.
-- **Tokyo Live Schedule:** Real-time countdowns to upcoming anime episodes airing live on Japanese TV.
-- **Top Airing & Trending Grids:** Filter by seasons, genres, and all-time popularity.
-
-### 💬 Real-Time Community & Direct Messages
-- **Global Cinema Lounge:** Live multi-user chat room with quick emoji bar, spoiler filters, and movie tagging.
-- **1-on-1 Direct Support:** Private messaging channel between users and verified administrators.
-- **High-Speed MongoDB Atlas Driver:** Optimized document storage with connection pooling and DNS fallback.
-
-### 👥 Synchronized Watch Party
-- **Interactive Rooms:** Create or join private watch parties using 6-character room codes.
-- **Synced Playback:** Host playback controls synced in real-time with member status badges.
-
-### 🛡️ Security, Profiles & 2FA
-- **Better Auth Integration:** Secure email/password authentication with PostgreSQL storage.
-- **Two-Factor Authentication (2FA):** Time-sensitive email OTP verification with emergency backup recovery codes.
-- **Local & Cloud Sync:** Guests enjoy 7-day auto-expiring local storage; registered users get seamless cloud database syncing.
-
-### 🌐 Global Localization & Preferences
-- **25+ International Locales:** Full multi-language support (English, Hindi, Bengali, Spanish, French, Japanese, Arabic with RTL, etc.).
-- **Multiple Visual Themes:** Obsidian Dark, Midnight Neon, Sakura Velvet, and Apple Glass.
-- **Quality & Bandwidth Settings:** Auto 4K/1080p preferences and network optimization.
-
-### 📱 Progressive Web App (PWA)
-- **Installable Anywhere:** Standalone desktop and mobile experience with custom shortcuts, offline fallback banners, and home-screen badges.
+- **Instant Zero-Lag Media Discovery:** Powered by live TMDB and AniList open metadata APIs.
+- **Interactive Social Features:** Real-time chat lounges, synchronized watch parties, and verified admin support.
+- **Flexible User Experience:** Full guest mode (no login required with 7-day auto-expiring local storage) or secure cloud profiles with 2FA protection.
 
 ---
 
-## 🛠️ Architecture & Tech Stack
+## 🚀 Core Features & Capabilities
 
 ```
-7media/
-├── app/                  # Next.js 16 App Router (Routes, API endpoints, Layouts)
-│   ├── actions/          # Server Actions (Auth, Chat, Admin, Watchlist, 2FA)
-│   ├── admin/            # Administrative dashboard and user management
-│   ├── anime/            # Anime portal and Tokyo airing calendar
-│   ├── chat/             # Global cinema lounge & 1-on-1 direct messages
-│   ├── contact/          # Official support and contact desk
-│   ├── movies/           # Movies discovery catalog
-│   ├── party/            # Synchronized watch party rooms
-│   ├── profile/          # User profile, 2FA, and security settings
-│   ├── series/           # TV series and seasons catalog
-│   ├── watch/            # Video streaming player and player controls
-│   ├── layout.tsx        # Root layout, fonts, and Schema.org JSON-LD SEO
-│   ├── sitemap.ts        # Dynamic XML sitemap generator
-│   └── robots.ts         # Search engine crawler policies
-├── components/           # Reusable UI & Glassmorphic Components
-│   ├── auth-prompt-modal.tsx  # Custom glassmorphic authentication prompt
-│   ├── custom-dialog-modal.tsx# Custom action & deletion confirmation dialog
-│   ├── navbar.tsx        # Responsive navigation header
-│   └── footer.tsx        # Modern comprehensive footer
-├── lib/                  # Core Utilities, API Clients & Database
-│   ├── anilist/          # AniList GraphQL queries and hooks
-│   ├── db/               # Neon PostgreSQL Drizzle ORM schemas
-│   ├── i18n/             # Multi-language translation dictionaries
-│   ├── mongodb.ts        # MongoDB Atlas singleton client
-│   ├── tmdb/             # TMDB REST client and custom hooks
-│   └── site.ts           # Canonical URL and site metadata
+                       ┌─────────────────────────────────────────┐
+                       │           7MEDIA ECOSYSTEM              │
+                       └────────────────────┬────────────────────┘
+                                            │
+        ┌───────────────────┬───────────────┴───────────────┬───────────────────┐
+        ▼                   ▼                               ▼                   ▼
+ 🎥 Movies & Series    🌸 Anime Portal               💬 Live Community    🍿 Watch Party
+  • 4K UHD Discovery    • AniList GraphQL Sync        • Global Chat Room   • 6-Digit Room Codes
+  • Multi-Server Player • Tokyo Live Airing Schedule  • 1-on-1 Direct DMs  • Synced Playback
+  • Season/Episode Hub  • Characters & Voice Actors   • Spoiler Protection • Multi-User Rooms
 ```
 
 ---
 
-## ⚙️ Getting Started
-
-### Prerequisites
-- **Node.js:** `v20.x` or higher
-- **npm** or **pnpm**
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/Shouvikdasprojects/7media.git
-cd 7media
-```
-
-### 2. Install dependencies
-```bash
-npm install
-```
-
-### 3. Configure environment variables
-Create a `.env.local` file in the root directory:
-
-```env
-# Site URL
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-
-# Better Auth Secret & Base URL
-BETTER_AUTH_SECRET=your_auth_secret_key
-BETTER_AUTH_URL=http://localhost:3000
-
-# Neon PostgreSQL Database
-DATABASE_URL=postgresql://user:password@ep-host.aws.neon.tech/neondb?sslmode=require
-
-# MongoDB Atlas (Chat & Direct Messages)
-MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/?retryWrites=true&w=majority
-MONGODB_DB_NAME=7media_chat
-
-# TMDB API
-TMDB_API_KEY=your_tmdb_v3_api_key
-TMDB_READ_ACCESS_TOKEN=your_tmdb_v4_read_access_token
-
-# Email Delivery (Resend / SMTP)
-RESEND_API_KEY=your_resend_api_key
-```
-
-### 4. Run the development server
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view the application in your browser.
+### 1. 🎥 Movies & TV Series Hub
+- **4K UHD & HDR Catalog:** Browse thousands of movies and TV series with high-resolution artwork, IMDb/TMDB ratings, and trailer embeds.
+- **Smart Filtering Engine:** Filter instantly by genre, release year, streaming provider (Netflix, Prime Video, Disney+, Apple TV+, HBO Max), and original audio language.
+- **Multi-Server Streaming Player:** Embedded multi-server video player with automatic server switching, episode auto-next, and playback progress memory.
+- **Curated Sections:** Trending Daily, Popular This Week, Top IMDb Masterpieces, and Editor's Choice collections.
 
 ---
 
-## 🧪 Build & Production
-
-```bash
-# Typecheck
-npx tsc --noEmit
-
-# Production Build
-npm run build
-
-# Start Production Server
-npm start
-```
+### 2. 🌸 Anime Portal & Tokyo Live Schedule
+- **AniList GraphQL Synchronization:** Complete anime database with Japanese kanji/romaji titles, airing status, studios (Mappa, Ufotable, Wit, Toei), genres, and trailer previews.
+- **Tokyo Airing Calendar:** Live countdown clocks to upcoming anime episodes currently broadcasting on Japanese television.
+- **Character & Voice Actor Profiles:** In-depth cast listings, character biographies, and voice actor portfolios.
 
 ---
 
-## 📜 Legal & Open Data Disclaimer
+### 3. 💬 Live Community & Social Chat Lounge
+- **Global Cinema Lounge:** A real-time chat room where cinephiles worldwide discuss plot twists, share movie recommendations, and interact live.
+- **Spoiler Protection:** Message blur toggles so users can discuss endings without ruining the experience for others.
+- **Media Tagging:** Tag any movie or anime directly in chat messages for instant 1-click preview cards.
+- **1-on-1 Direct Support:** Private encrypted communication channel between users and verified administrators.
+- **High-Speed MongoDB Atlas Engine:** Instant message delivery with zero page reload required.
 
-7MEDIA does not host, upload, or store any video media on its servers. All metadata, imagery, and synopsis are provided via **The Movie Database (TMDB)** and **AniList GraphQL** open APIs. Video players link exclusively to third-party public embeds.
+---
+
+### 4. 🍿 Synchronized Multi-User Watch Party
+- **Private Cinema Rooms:** Create a watch room in seconds and share the unique 6-digit code with friends.
+- **Real-Time Synchronized Playback:** Play, pause, and seek events sync across all room members automatically.
+- **Room Member Badges:** Live participant list showing who is currently watching.
+
+---
+
+### 5. 👑 Cinephile Zone, Watchlist & Badges
+- **Hybrid Storage Architecture:**
+  - **Guest Mode:** Add titles to watchlist and history instantly with a 7-day auto-clearing local cache.
+  - **Account Mode:** Cloud database synchronization across all your devices.
+- **Watch History & Progress:** Automatically resume movies and anime episodes right where you left off.
+- **Cinephile Badges & XP:** Earn collectible badges (Night Owl, Binge Master, Anime Otaku, Cinema Connoisseur) as you explore content.
+
+---
+
+### 6. 🛡️ Enterprise Security & 2FA Protection
+- **Better Auth Integration:** Hardened authentication with email verification.
+- **Two-Factor Authentication (2FA):** Time-sensitive email OTP verification on login.
+- **Emergency Backup Codes:** 6 single-use recovery codes for account access safety.
+- **Luxury Glassmorphic UI Dialogs:** Replaces all ugly browser native alert popups with branded 7MEDIA glow modals.
+
+---
+
+### 7. 🌐 25+ International Languages & Custom Themes
+- **25+ Global Locales:** English, Bengali (বাংলা), Hindi (हिन्दी), Spanish, French, German, Japanese (日本語), Arabic (العربية with full RTL layout), Portuguese, Korean, Russian, Italian, Turkish, and more.
+- **4 Luxury Cinema Themes:**
+  - 🌌 **Obsidian Dark** (Default Cinema Crimson)
+  - 🌃 **Midnight Neon** (Deep Cyan Glow)
+  - 🌸 **Sakura Velvet** (Anime Pink & Rose)
+  - 🍏 **Apple Glass** (Frosted Minimalist)
+- **Bandwidth & Quality Preference:** Choose between Auto 4K, 1080p Full HD, and Data Saver mode.
+
+---
+
+### 8. 📱 Progressive Web App (PWA)
+- **Install on Any Device:** Install 7MEDIA as a native standalone app on Android, iOS, Windows, and macOS.
+- **App Shortcuts:** Long-press the home screen icon to jump directly into Movies, Anime Hub, or Global Chat.
+- **Fast Navigation:** Pre-cached assets and instant load times.
+
+---
+
+## 📑 Complete Page Directory
+
+| Section | Route | Description |
+| :--- | :--- | :--- |
+| **Home** | `/` | Hero billboard, trending media, anime spotlight, top rated |
+| **Movies** | `/movies` | Filterable 4K movie discovery engine |
+| **TV Series** | `/series` | Complete TV series catalog with seasons and episodes |
+| **Anime** | `/anime` | AniList anime portal, top airing, genres & spotlight |
+| **Calendar** | `/calendar` | Tokyo live anime airing broadcast countdowns |
+| **Live Chat** | `/chat` | Global cinema lounge & 1-on-1 direct admin DMs |
+| **Watch Party** | `/party` | Synchronized multi-user watch party rooms |
+| **Search** | `/search` | Global instant search across movies, series, and anime |
+| **My Watchlist**| `/my-list` | Personal saved movies and anime watchlist |
+| **History** | `/history` | Watch history with resume playback indicators |
+| **Badges & XP**| `/badges` | Gamified cinephile achievement badges |
+| **Profile** | `/profile` | User settings, password management & 2FA security |
+| **Admin** | `/admin` | Admin dashboard for broadcast alerts, messages & users |
+| **Support** | `/contact` | Official inquiry and customer contact desk |
+| **Help / FAQ** | `/faq` | Frequently asked questions & streaming guide |
+| **About** | `/about` | 7MEDIA mission, architecture & technology overview |
+| **Legal** | `/terms` & `/privacy` | Terms of service, privacy policy & DMCA protocols |
 
 ---
 
 <div align="center">
-Made with ❤️ for cinema & anime fans worldwide • © 2026 7MEDIA Inc.
+Made with ❤️ for cinephiles & anime lovers worldwide • © 2026 7MEDIA Inc.
 </div>
