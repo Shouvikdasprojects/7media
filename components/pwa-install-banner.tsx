@@ -36,6 +36,8 @@ export function PwaInstallBanner() {
     }
   }, [])
 
+  const [mobileTip, setMobileTip] = useState(false)
+
   const handleInstall = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt()
@@ -46,8 +48,8 @@ export function PwaInstallBanner() {
       setDeferredPrompt(null)
     } else {
       // Guide mobile iOS/Android users
-      alert('To install 7MEDIA: Tap the Share icon in your browser and select "Add to Home Screen".')
-      setShowBanner(false)
+      setMobileTip(true)
+      setTimeout(() => setShowBanner(false), 5000)
     }
   }
 
@@ -75,7 +77,7 @@ export function PwaInstallBanner() {
               </span>
             </div>
             <p className="text-[11px] text-zinc-400">
-              Instant launch, full-screen playback, and offline catalog.
+              {mobileTip ? 'Tap Share ⬆️ and select "Add to Home Screen"!' : 'Instant launch, full-screen playback, and offline catalog.'}
             </p>
           </div>
         </div>

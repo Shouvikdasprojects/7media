@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import useSWR from 'swr'
 import {
   MessageSquare,
@@ -12,21 +11,21 @@ import {
   Trash2,
   Sparkles,
   ShieldCheck,
-  ShieldAlert,
   Search,
-  User,
   ArrowLeft,
   Crown,
   Film,
   Smile,
   CheckCheck,
-  AlertCircle,
   Loader2,
   PlusCircle,
-  MoreVertical,
   Mail,
   ChevronRight,
   Tv,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+  X,
 } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
@@ -41,6 +40,8 @@ import {
   getAdminUserInfo,
 } from '@/app/actions/chat'
 import { verifyIsAdmin } from '@/app/actions/admin'
+import { AuthPromptModal } from '@/components/auth-prompt-modal'
+import { CustomDialogModal } from '@/components/custom-dialog-modal'
 
 const QUICK_EMOJIS = ['🍿', '🔥', '❤️', '🎬', '🚀', '😂', '👏', '⚡', '💯', '🎉']
 
@@ -48,6 +49,21 @@ export default function ChatPage() {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState<'global' | 'dm'>('global')
   const [isAdmin, setIsAdmin] = useState(false)
+
+  // Modals & Toast State
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authModalFeature, setAuthModalFeature] = useState('1-on-1 Direct Messages')
+  const [authModalDescription, setAuthModalDescription] = useState('Sign in to chat privately with other viewers and access Admin Support.')
+  
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ type, message })
+    setTimeout(() => {
+      setToast((current) => (current?.message === message ? null : current))
+    }, 4000)
+  }
 
   // -------------------------------------------------------------
   // GLOBAL CHAT STATE
@@ -80,21 +96,27 @@ export default function ChatPage() {
   const [showMobileDmList, setShowMobileDmList] = useState(true)
   const dmMessagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Threads SWR Polling (every 4s)
+  // DM Threads Polling (every 4s)
   const {
     data: threadsData,
     mutate: mutateThreads,
-  } = useSWR(session?.user ? 'dm_threads' : null, () => getDirectMessageThreads(), {
-    refreshInterval: 4000,
-  })
+    isLoading: isThreadsLoading,
+  } = useSWR(
+    session?.user ? 'dm_threads' : null,
+    () => getDirectMessageThreads(),
+    {
+      refreshInterval: 4000,
+      revalidateOnFocus: true,
+    }
+  )
 
-  // Active DM Conversation SWR Polling (every 2.5s)
+  // Active DM Conversation Polling (every 2.5s)
   const {
     data: activeDmData,
     mutate: mutateActiveDm,
     isLoading: isActiveDmLoading,
   } = useSWR(
-    session?.user && selectedPartnerId ? `dm_convo_${selectedPartnerId}` : null,
+    selectedPartnerId && session?.user ? ['dm_conversation', selectedPartnerId] : null,
     () => getDirectMessagesWithUser(selectedPartnerId!),
     {
       refreshInterval: 2500,
@@ -102,36 +124,36 @@ export default function ChatPage() {
     }
   )
 
-  // Check Admin Role
+  // Check Admin status on mount
   useEffect(() => {
-    if (session?.user) {
-      verifyIsAdmin().then((res) => setIsAdmin(Boolean(res?.isAdmin)))
-    } else {
-      setIsAdmin(false)
-      try {
-        const savedGuest = localStorage.getItem('7media_chat_guest_name')
-        if (savedGuest) setGuestName(savedGuest)
-      } catch {}
+    async function checkRole() {
+      if (session?.user) {
+        const res = await verifyIsAdmin()
+        setIsAdmin(res.isAdmin)
+      } else {
+        setIsAdmin(false)
+      }
     }
-  }, [session?.user])
+    checkRole()
+  }, [session])
 
-  // Select first thread by default when threads load
+  // Select Admin Support thread by default if no active partner and user is regular user
   useEffect(() => {
-    if (threadsData?.threads && threadsData.threads.length > 0 && !selectedPartnerId) {
-      setSelectedPartnerId(threadsData.threads[0].partnerId)
+    if (activeTab === 'dm' && !selectedPartnerId && threadsData?.threads?.length) {
+      const defaultPartner = threadsData.threads[0]
+      setSelectedPartnerId(defaultPartner.partnerId)
     }
-  }, [threadsData?.threads, selectedPartnerId])
+  }, [activeTab, selectedPartnerId, threadsData])
 
-  // Auto-scroll global messages
+  // Scroll to bottom on new messages
   useEffect(() => {
-    if (activeTab === 'global' && globalData?.messages) {
+    if (activeTab === 'global') {
       globalMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [globalData?.messages?.length, activeTab])
 
-  // Auto-scroll DM messages
   useEffect(() => {
-    if (activeTab === 'dm' && activeDmData?.messages) {
+    if (activeTab === 'dm' && selectedPartnerId) {
       dmMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [activeDmData?.messages?.length, activeTab, selectedPartnerId])
@@ -144,49 +166,46 @@ export default function ChatPage() {
     if (!globalInput.trim() || isSendingGlobal) return
 
     const messageText = globalInput.trim()
-    const tag = mediaTagInput.trim() || null
+    const mediaTag = mediaTagInput.trim() || null
 
     setGlobalInput('')
     setMediaTagInput('')
     setShowMediaTagBox(false)
-    setGlobalError(null)
     setIsSendingGlobal(true)
-
-    // Save guest handle
-    if (!session?.user && guestName) {
-      try {
-        localStorage.setItem('7media_chat_guest_name', guestName)
-      } catch {}
-    }
+    setGlobalError(null)
 
     try {
       const res = await postGlobalChatMessage({
         content: messageText,
-        mediaTag: tag,
-        guestName,
+        mediaTag,
+        guestName: !session?.user ? guestName : undefined,
       })
 
       if (!res.success) {
         setGlobalError(res.error || 'Failed to send message.')
+        showToast(res.error || 'Failed to send message.', 'error')
       } else {
         await mutateGlobal()
       }
     } catch {
       setGlobalError('Connection error. Please try again.')
+      showToast('Connection error. Please try again.', 'error')
     } finally {
       setIsSendingGlobal(false)
     }
   }
 
   const handleDeleteGlobal = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this message?')) return
     await deleteGlobalChatMessage(id)
+    showToast('Message removed successfully.', 'success')
     mutateGlobal()
   }
 
   const startDmWithUser = (targetUserId: string) => {
     if (!session?.user) {
-      alert('Please sign in to send direct messages to users or admin.')
+      setAuthModalFeature('1-on-1 Direct Messaging')
+      setAuthModalDescription('Sign in to message this user directly or receive replies from fellow cinephiles.')
+      setAuthModalOpen(true)
       return
     }
     setSelectedPartnerId(targetUserId)
@@ -215,10 +234,10 @@ export default function ChatPage() {
         await mutateActiveDm()
         await mutateThreads()
       } else {
-        alert(res.error || 'Failed to deliver message.')
+        showToast(res.error || 'Failed to deliver message.', 'error')
       }
     } catch {
-      alert('Failed to send direct message. Please check network.')
+      showToast('Failed to send direct message. Please check network.', 'error')
     } finally {
       setIsSendingDm(false)
     }
@@ -241,6 +260,56 @@ export default function ChatPage() {
     <div className="flex min-h-screen flex-col bg-background text-foreground select-none">
       <Navbar />
 
+      {/* Floating Animated Custom Toast */}
+      {toast && (
+        <div className="fixed top-20 right-4 sm:right-6 z-[120] max-w-sm w-full animate-in slide-in-from-top-4 fade-in duration-300">
+          <div
+            className={`p-4 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center gap-3 ${
+              toast.type === 'error'
+                ? 'bg-rose-950/90 border-rose-500/40 text-rose-200'
+                : toast.type === 'success'
+                ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200'
+                : 'bg-zinc-900/90 border-white/20 text-white'
+            }`}
+          >
+            {toast.type === 'error' && <AlertTriangle size={18} className="text-rose-400 shrink-0" />}
+            {toast.type === 'success' && <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />}
+            {toast.type === 'info' && <Info size={18} className="text-primary shrink-0" />}
+            
+            <p className="text-xs font-medium flex-1 leading-snug">{toast.message}</p>
+
+            <button
+              onClick={() => setToast(null)}
+              className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Auth Required Modal */}
+      <AuthPromptModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        feature={authModalFeature}
+        description={authModalDescription}
+      />
+
+      {/* Custom Delete Confirmation Modal */}
+      <CustomDialogModal
+        isOpen={Boolean(deleteConfirmId)}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={() => {
+          if (deleteConfirmId) handleDeleteGlobal(deleteConfirmId)
+        }}
+        type="danger"
+        title="Delete Message"
+        message="Are you sure you want to permanently delete this chat message? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Keep"
+      />
+
       <main className="flex-1 px-3 sm:px-6 lg:px-10 pb-16 pt-24 md:pt-28 max-w-7xl mx-auto w-full">
         {/* Page Top Header */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
@@ -249,21 +318,16 @@ export default function ChatPage() {
               <Sparkles size={16} />
               <span>7MEDIA Live Hub</span>
             </div>
-            <h1 className="font-display text-3xl sm:text-4xl font-black uppercase tracking-tight text-foreground flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black font-display tracking-tight text-foreground uppercase">
               Community &amp; Chat
-              {isAdmin && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-mono font-bold tracking-normal uppercase">
-                  <Crown size={12} /> Admin Mode
-                </span>
-              )}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Talk cinema with viewers globally or send direct messages and support inquiries to Admin.
             </p>
           </div>
 
-          {/* Tab Selector Buttons */}
-          <div className="flex items-center gap-2 bg-secondary/80 p-1.5 rounded-2xl border border-border shrink-0">
+          {/* Navigation Pill Switcher */}
+          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-secondary/80 border border-border shrink-0 self-start sm:self-auto">
             <button
               type="button"
               onClick={() => setActiveTab('global')}
@@ -281,7 +345,9 @@ export default function ChatPage() {
               type="button"
               onClick={() => {
                 if (!session?.user) {
-                  alert('Please sign in to access 1-on-1 Direct Messages and Admin Support.')
+                  setAuthModalFeature('1-on-1 Direct Messages')
+                  setAuthModalDescription('Sign in to access your private conversations and message Admin Support directly.')
+                  setAuthModalOpen(true)
                   return
                 }
                 setActiveTab('dm')
@@ -302,143 +368,151 @@ export default function ChatPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* TAB 1: GLOBAL CINEMA LOUNGE                                               */}
+        {/* TAB 1: GLOBAL COMMUNITY LOUNGE                                            */}
         {/* ========================================================================= */}
         {activeTab === 'global' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Main Chat Stream (3 Columns on Large Screens) */}
-            <div className="lg:col-span-3 flex flex-col h-[70vh] rounded-3xl border border-border bg-card/80 shadow-2xl backdrop-blur-xl overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start animate-in fade-in duration-200">
+            {/* Left 3 Columns: Main Chat Stream */}
+            <div className="lg:col-span-3 flex flex-col h-[680px] rounded-3xl border border-border bg-card/80 backdrop-blur-xl shadow-2xl overflow-hidden">
               {/* Chat Stream Header */}
-              <div className="px-5 py-3.5 border-b border-border/80 bg-secondary/40 flex items-center justify-between">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/80 bg-secondary/40">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
                   <span className="text-xs font-bold uppercase tracking-wider text-foreground">
                     Live Global Feed
                   </span>
-                  <span className="text-[11px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-full border border-border">
+                  <span className="text-[11px] text-muted-foreground">
                     {globalData?.messages?.length || 0} messages
                   </span>
                 </div>
 
-                <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
-                  <Users size={13} className="text-emerald-400" /> Open to all cinephiles
-                </span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Globe2 size={14} className="text-primary" />
+                  <span className="hidden sm:inline">Open to all cinephiles</span>
+                </div>
               </div>
 
-              {/* Chat Messages Scroll Container */}
+              {/* Chat Messages Stream */}
               <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 scrollbar-thin">
-                {isGlobalLoading && (!globalData?.messages || globalData.messages.length === 0) ? (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
-                    <Loader2 size={28} className="animate-spin text-primary" />
-                    <p className="text-xs font-semibold">Connecting to Global Cinema Lounge...</p>
+                {isGlobalLoading && !globalData?.messages?.length ? (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+                    <Loader2 size={32} className="animate-spin text-primary" />
+                    <p className="text-xs font-bold uppercase tracking-wider">Syncing Global Lounge...</p>
                   </div>
                 ) : globalData?.messages?.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-center p-6">
-                    <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mb-3">
-                      <Globe2 size={28} className="text-primary" />
-                    </div>
-                    <h3 className="text-sm font-bold text-foreground">No messages yet</h3>
+                  <div className="flex flex-col items-center justify-center h-full text-center p-6 text-muted-foreground">
+                    <Globe2 size={40} className="text-muted-foreground/30 mb-3" />
+                    <p className="text-sm font-bold text-foreground">No messages yet</p>
                     <p className="text-xs max-w-xs mt-1">
                       Be the first to drop a movie recommendation, review, or say hello!
                     </p>
                   </div>
                 ) : (
                   globalData?.messages?.map((msg: any) => {
-                    const isMe = session?.user && msg.userId === session.user.id
+                    const isMsgAuthor = session?.user?.id && session.user.id === msg.userId
                     const isMsgAdmin = msg.userRole === 'admin'
 
                     return (
                       <div
                         key={msg.id}
-                        className={`flex items-start gap-3 group animate-in fade-in slide-in-from-bottom-1 ${
-                          isMe ? 'flex-row-reverse' : ''
+                        className={`group flex items-start gap-3 transition-all ${
+                          isMsgAuthor ? 'flex-row-reverse' : 'flex-row'
                         }`}
                       >
-                        {/* User Avatar */}
-                        <div
-                          className={`w-9 h-9 rounded-2xl shrink-0 overflow-hidden flex items-center justify-center border font-bold text-xs ${
-                            isMsgAdmin
-                              ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
-                              : isMe
-                              ? 'bg-primary/20 border-primary/40 text-primary'
-                              : 'bg-secondary border-border text-foreground'
-                          }`}
-                        >
-                          {msg.userImage && msg.userImage.startsWith('http') ? (
-                            <img src={msg.userImage} alt={msg.userName} className="w-full h-full object-cover" />
-                          ) : isMsgAdmin ? (
-                            <Crown size={18} className="text-amber-400" />
-                          ) : (
-                            <span>{msg.userName?.[0]?.toUpperCase() || 'U'}</span>
+                        {/* Avatar */}
+                        <div className="relative shrink-0">
+                          <div className="w-9 h-9 rounded-2xl bg-secondary border border-border flex items-center justify-center overflow-hidden font-bold text-xs">
+                            {msg.userImage && msg.userImage.startsWith('http') ? (
+                              <img src={msg.userImage} alt={msg.userName} className="w-full h-full object-cover" />
+                            ) : isMsgAdmin ? (
+                              <Crown size={16} className="text-amber-400" />
+                            ) : (
+                              <span>{msg.userName[0]?.toUpperCase() || 'U'}</span>
+                            )}
+                          </div>
+                          {isMsgAdmin && (
+                            <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-black text-[9px] shadow">
+                              👑
+                            </span>
                           )}
                         </div>
 
-                        {/* Message Bubble & Metadata */}
-                        <div className={`max-w-[85%] sm:max-w-[75%] ${isMe ? 'items-end text-right' : ''}`}>
-                          {/* Sender Info Bar */}
-                          <div className={`flex items-center gap-2 mb-1 px-1 ${isMe ? 'justify-end' : ''}`}>
-                            <span className="text-xs font-bold text-foreground">
+                        {/* Message Bubble */}
+                        <div
+                          className={`max-w-[82%] sm:max-w-[70%] space-y-1.5 ${
+                            isMsgAuthor ? 'items-end text-right' : 'items-start text-left'
+                          }`}
+                        >
+                          {/* Author Header */}
+                          <div
+                            className={`flex items-center gap-1.5 text-[11px] ${
+                              isMsgAuthor ? 'justify-end' : 'justify-start'
+                            }`}
+                          >
+                            <span className="font-bold text-foreground truncate max-w-[140px]">
                               {msg.userName}
                             </span>
 
                             {isMsgAdmin && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-black tracking-wider uppercase shadow-sm">
-                                <Crown size={10} /> Admin 👑
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[9px] font-black uppercase tracking-wider">
+                                <Crown size={9} /> Admin
                               </span>
                             )}
 
-                            <span className="text-[10px] text-muted-foreground font-mono">
-                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(msg.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
                             </span>
 
-                            {/* Actions on Message */}
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                              {/* 1-Click Direct Message Button */}
-                              {session?.user && msg.userId && msg.userId !== session.user.id && (
-                                <button
-                                  type="button"
-                                  onClick={() => startDmWithUser(msg.userId)}
-                                  className="p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-secondary transition text-[11px] flex items-center gap-1"
-                                  title="Send Direct Message"
-                                >
-                                  <MessageSquare size={12} />
-                                  <span className="hidden sm:inline">DM</span>
-                                </button>
-                              )}
+                            {/* Direct Message Shortcut */}
+                            {msg.userId && msg.userId !== session?.user?.id && (
+                              <button
+                                type="button"
+                                onClick={() => startDmWithUser(msg.userId)}
+                                title={`Send private message to ${msg.userName}`}
+                                className="opacity-0 group-hover:opacity-100 transition p-1 hover:bg-secondary rounded-md text-muted-foreground hover:text-primary cursor-pointer"
+                              >
+                                <Mail size={12} />
+                              </button>
+                            )}
 
-                              {/* Delete message (Admin or Author) */}
-                              {(isAdmin || isMe) && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteGlobal(msg.id)}
-                                  className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
-                                  title="Delete Message"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              )}
-                            </div>
+                            {/* Delete Button (for Admin or Author) */}
+                            {(isAdmin || isMsgAuthor) && (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(msg.id)}
+                                title="Delete message"
+                                className="opacity-0 group-hover:opacity-100 transition p-1 hover:bg-rose-500/20 rounded-md text-muted-foreground hover:text-rose-400 cursor-pointer"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
                           </div>
+
+                          {/* Tagged Title Chip */}
+                          {msg.mediaTag && (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-primary/10 border border-primary/30 text-primary text-xs font-bold">
+                              <Film size={12} />
+                              <span>{msg.mediaTag}</span>
+                            </div>
+                          )}
 
                           {/* Message Content Bubble */}
                           <div
-                            className={`rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed shadow-md break-words ${
-                              isMsgAdmin
-                                ? 'bg-gradient-to-r from-amber-950/40 via-zinc-900 to-zinc-950 border border-amber-500/30 text-zinc-100'
-                                : isMe
-                                ? 'bg-primary text-primary-foreground font-medium rounded-tr-none'
-                                : 'bg-secondary/90 border border-border text-foreground rounded-tl-none'
+                            className={`p-3.5 rounded-3xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words shadow-sm ${
+                              isMsgAuthor
+                                ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                : isMsgAdmin
+                                ? 'bg-amber-950/30 border border-amber-500/30 text-amber-100 rounded-tl-none'
+                                : 'bg-secondary/80 border border-border text-foreground rounded-tl-none'
                             }`}
                           >
-                            <p className="whitespace-pre-wrap">{msg.content}</p>
-
-                            {/* Optional Media Recommendation Tag */}
-                            {msg.mediaTag && (
-                              <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center gap-2 text-xs font-semibold text-accent">
-                                <Film size={14} />
-                                <span>{msg.mediaTag}</span>
-                              </div>
-                            )}
+                            {msg.content}
                           </div>
                         </div>
                       </div>
@@ -448,81 +522,92 @@ export default function ChatPage() {
                 <div ref={globalMessagesEndRef} />
               </div>
 
-              {/* Quick Emoji Bar */}
-              <div className="px-4 py-2 border-t border-border/60 bg-secondary/20 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground mr-1">Quick:</span>
+              {/* Quick Emojis Bar */}
+              <div className="px-4 py-2 border-t border-border/50 bg-secondary/20 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">
+                  Quick:
+                </span>
                 {QUICK_EMOJIS.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => setGlobalInput((prev) => prev + emoji)}
-                    className="p-1.5 rounded-xl hover:bg-secondary text-sm transition active:scale-90 cursor-pointer"
+                    className="p-1 rounded-lg hover:bg-secondary text-sm transition-transform active:scale-125 cursor-pointer shrink-0"
                   >
                     {emoji}
                   </button>
                 ))}
               </div>
 
-              {/* Chat Input Box */}
-              <div className="p-3 sm:p-4 border-t border-border bg-card/95">
-                {globalError && (
-                  <div className="mb-2 p-2 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold flex items-center gap-1.5">
-                    <AlertCircle size={14} />
-                    <span>{globalError}</span>
+              {/* Message Composer */}
+              <div className="p-3 sm:p-4 border-t border-border bg-card">
+                {/* Media Tag Input Box */}
+                {showMediaTagBox && (
+                  <div className="mb-3 p-3 rounded-2xl bg-secondary/50 border border-border space-y-2 animate-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                      <span className="flex items-center gap-1.5 text-primary">
+                        <Film size={13} /> Tag a Movie or Series Recommendation
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowMediaTagBox(false)}
+                        className="hover:text-foreground"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. Interstellar (2014) or Attack on Titan"
+                      value={mediaTagInput}
+                      onChange={(e) => setMediaTagInput(e.target.value)}
+                      maxLength={150}
+                      className="w-full h-9 rounded-xl border border-border bg-background px-3 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary"
+                    />
                   </div>
                 )}
 
-                {/* Media Tag Input Modal / Accordion */}
-                {showMediaTagBox && (
-                  <div className="mb-2 p-2.5 rounded-2xl bg-secondary/80 border border-border flex items-center gap-2">
-                    <Film size={15} className="text-primary shrink-0" />
-                    <input
-                      type="text"
-                      value={mediaTagInput}
-                      onChange={(e) => setMediaTagInput(e.target.value)}
-                      placeholder="Enter Movie/Anime Name (e.g. Inception, Attack on Titan)..."
-                      className="flex-1 bg-transparent text-xs text-foreground outline-none placeholder-muted-foreground"
-                    />
+                {/* Guest Name Setter (if unauthenticated) */}
+                {!session?.user && (
+                  <div className="mb-2 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground font-medium">Posting as:</span>
+                      <input
+                        type="text"
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        placeholder="Your nickname"
+                        maxLength={25}
+                        className="h-7 w-32 rounded-lg border border-border bg-secondary/70 px-2 text-xs font-bold text-foreground outline-none focus:border-primary"
+                      />
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setShowMediaTagBox(false)}
-                      className="text-xs text-muted-foreground hover:text-foreground font-bold px-2"
+                      onClick={() => {
+                        setAuthModalFeature('Verified Cinephile Badge')
+                        setAuthModalDescription('Sign in to display your verified profile avatar, unlock persistent history, and direct message viewers.')
+                        setAuthModalOpen(true)
+                      }}
+                      className="text-primary hover:underline font-bold text-[11px]"
                     >
-                      Done
+                      Sign In for Verified Badge →
                     </button>
                   </div>
                 )}
 
-                {/* Unauthenticated Guest Handle Banner */}
-                {!session?.user && (
-                  <div className="mb-2.5 flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground text-[11px] uppercase font-bold">Posting as:</span>
-                    <input
-                      type="text"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      placeholder="Your Guest Name"
-                      maxLength={25}
-                      className="px-2.5 py-1 rounded-xl bg-secondary border border-border text-xs text-foreground font-bold outline-none w-36"
-                    />
-                    <Link href="/sign-in" className="text-primary hover:underline text-[11px] font-bold ml-auto">
-                      Sign in for Verified Badge →
-                    </Link>
-                  </div>
-                )}
-
+                {/* Main Input Form */}
                 <form onSubmit={handleSendGlobal} className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowMediaTagBox((prev) => !prev)}
-                    className={`p-2.5 rounded-2xl border transition active:scale-95 cursor-pointer ${
+                    onClick={() => setShowMediaTagBox((p) => !p)}
+                    title="Recommend a Movie/Show tag"
+                    className={`h-11 w-11 rounded-2xl border flex items-center justify-center transition cursor-pointer shrink-0 ${
                       showMediaTagBox || mediaTagInput
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-secondary text-muted-foreground hover:text-foreground border-border'
+                        ? 'bg-primary/20 border-primary text-primary'
+                        : 'bg-secondary/60 border-border text-muted-foreground hover:text-foreground'
                     }`}
-                    title="Attach Movie/Anime Recommendation Tag"
                   >
-                    <Film size={17} />
+                    <Film size={18} />
                   </button>
 
                   <input
@@ -532,13 +617,13 @@ export default function ChatPage() {
                     onChange={(e) => setGlobalInput(e.target.value)}
                     placeholder="Type a message to the 7MEDIA community (Press Enter to send)..."
                     maxLength={1000}
-                    className="flex-1 h-12 rounded-2xl border border-border bg-secondary/60 px-4 text-xs sm:text-sm text-foreground placeholder-muted-foreground outline-none transition focus:border-primary focus:bg-secondary focus:ring-2 focus:ring-primary/20"
+                    className="flex-1 h-11 rounded-2xl border border-border bg-secondary/60 px-4 text-xs sm:text-sm text-foreground placeholder-muted-foreground outline-none transition focus:border-primary focus:bg-secondary focus:ring-2 focus:ring-primary/20"
                   />
 
                   <button
                     type="submit"
                     disabled={isSendingGlobal || !globalInput.trim()}
-                    className="h-12 px-5 rounded-2xl bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                    className="h-11 px-5 rounded-2xl bg-primary text-primary-foreground font-bold text-xs uppercase tracking-wider shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shrink-0"
                   >
                     {isSendingGlobal ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -553,9 +638,9 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* Sidebar Guidelines & Direct Support Link */}
+            {/* Right Column: Community Guidelines & Admin Desk */}
             <div className="space-y-4">
-              <div className="p-5 rounded-3xl border border-border bg-card/70 shadow-lg space-y-3">
+              <div className="p-5 rounded-3xl border border-border bg-card/60 backdrop-blur-md space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
                   <ShieldCheck size={16} />
                   <span>Lounge Guidelines</span>
@@ -580,7 +665,9 @@ export default function ChatPage() {
                   type="button"
                   onClick={() => {
                     if (!session?.user) {
-                      alert('Please sign in to send direct messages to Admin Support.')
+                      setAuthModalFeature('Admin Direct Support')
+                      setAuthModalDescription('Sign in to reach 7MEDIA Admin Support directly and track your inquiries.')
+                      setAuthModalOpen(true)
                       return
                     }
                     setActiveTab('dm')
@@ -599,24 +686,33 @@ export default function ChatPage() {
         {/* TAB 2: 1-ON-1 DIRECT MESSAGES & ADMIN SUPPORT                             */}
         {/* ========================================================================= */}
         {activeTab === 'dm' && (
-          <div className="h-[75vh] rounded-3xl border border-border bg-card/80 shadow-2xl backdrop-blur-xl overflow-hidden flex flex-col md:flex-row">
-            {/* Left Column: Conversation Threads List */}
+          <div className="h-[720px] rounded-3xl border border-border bg-card/80 backdrop-blur-xl shadow-2xl flex overflow-hidden animate-in fade-in duration-200">
+            {/* Conversation Threads Sidebar */}
             <div
-              className={`w-full md:w-80 lg:w-96 border-r border-border bg-secondary/30 flex flex-col ${
+              className={`w-full md:w-80 lg:w-96 border-r border-border/80 flex flex-col bg-secondary/30 ${
                 !showMobileDmList ? 'hidden md:flex' : 'flex'
               }`}
             >
-              {/* Search Header */}
-              <div className="p-4 border-b border-border space-y-3">
+              {/* Sidebar Header */}
+              <div className="p-4 border-b border-border/80 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    {isAdmin ? 'Admin Conversations' : 'Your Messages'}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono bg-secondary px-2 py-0.5 rounded-full border border-border">
-                    {threadsData?.threads?.length || 0} chats
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-black uppercase tracking-wider text-foreground">
+                      {isAdmin ? 'All User Inboxes 👑' : 'Direct Messages'}
+                    </h2>
+                    {isAdmin && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[10px] font-black uppercase">
+                        Admin Mode
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    {filteredThreads.length} threads
                   </span>
                 </div>
 
+                {/* Search Box */}
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
@@ -624,23 +720,29 @@ export default function ChatPage() {
                     value={dmSearchQuery}
                     onChange={(e) => setDmSearchQuery(e.target.value)}
                     placeholder="Search conversations..."
-                    className="w-full h-9 pl-9 pr-3 rounded-xl bg-card border border-border text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary"
+                    className="w-full h-9 rounded-xl border border-border bg-background/80 pl-9 pr-3 text-xs text-foreground placeholder-muted-foreground outline-none focus:border-primary"
                   />
                 </div>
               </div>
 
               {/* Threads List */}
               <div className="flex-1 overflow-y-auto divide-y divide-border/40 scrollbar-thin">
-                {filteredThreads.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground text-xs">
-                    <Mail size={24} className="mx-auto mb-2 opacity-50" />
-                    <p className="font-bold">No conversations found</p>
-                    <p className="text-[11px] mt-1">Start chatting with users from the Global Lounge or message Admin.</p>
+                {isThreadsLoading ? (
+                  <div className="p-8 text-center text-muted-foreground space-y-2">
+                    <Loader2 size={24} className="animate-spin mx-auto text-primary" />
+                    <p className="text-xs">Loading conversations...</p>
+                  </div>
+                ) : filteredThreads.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground space-y-2">
+                    <Mail size={32} className="mx-auto text-muted-foreground/30 mb-2" />
+                    <p className="text-xs font-bold text-foreground">No conversations found</p>
+                    <p className="text-[11px] leading-relaxed">
+                      Start a chat with Admin Support or click DM on any message in Global Lounge.
+                    </p>
                   </div>
                 ) : (
                   filteredThreads.map((thread: any) => {
-                    const isSelected = selectedPartnerId === thread.partnerId
-                    const isPartnerAdmin = thread.partnerRole === 'admin'
+                    const isSelected = thread.partnerId === selectedPartnerId
 
                     return (
                       <button
@@ -650,35 +752,41 @@ export default function ChatPage() {
                           setSelectedPartnerId(thread.partnerId)
                           setShowMobileDmList(false)
                         }}
-                        className={`w-full p-4 flex items-center gap-3 text-left transition active:bg-secondary/80 cursor-pointer ${
-                          isSelected ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-card/50'
+                        className={`w-full p-4 flex items-center gap-3 text-left transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary/15 border-l-4 border-l-primary'
+                            : 'hover:bg-secondary/60'
                         }`}
                       >
                         {/* Avatar */}
-                        <div
-                          className={`w-10 h-10 rounded-2xl shrink-0 overflow-hidden flex items-center justify-center border font-bold text-xs ${
-                            isPartnerAdmin
-                              ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                              : 'bg-secondary border-border text-foreground'
-                          }`}
-                        >
-                          {thread.partnerImage && thread.partnerImage.startsWith('http') ? (
-                            <img src={thread.partnerImage} alt={thread.partnerName} className="w-full h-full object-cover" />
-                          ) : isPartnerAdmin ? (
-                            <Crown size={18} className="text-amber-400" />
-                          ) : (
-                            <span>{thread.partnerName?.[0]?.toUpperCase() || 'U'}</span>
+                        <div className="relative shrink-0">
+                          <div className="w-10 h-10 rounded-2xl bg-secondary border border-border flex items-center justify-center font-bold text-xs overflow-hidden">
+                            {thread.partnerImage && thread.partnerImage.startsWith('http') ? (
+                              <img src={thread.partnerImage} alt={thread.partnerName} className="w-full h-full object-cover" />
+                            ) : thread.partnerRole === 'admin' ? (
+                              <Crown size={18} className="text-amber-400" />
+                            ) : (
+                              <span>{thread.partnerName?.[0]?.toUpperCase() || 'U'}</span>
+                            )}
+                          </div>
+                          {thread.unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-primary text-primary-foreground font-black text-[9px] shadow animate-pulse">
+                              {thread.unreadCount}
+                            </span>
                           )}
                         </div>
 
                         {/* Details */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className="text-xs font-bold text-foreground truncate">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <h3 className="text-xs font-bold text-foreground truncate flex items-center gap-1">
                               {thread.partnerName}
-                            </span>
-                            {thread.lastTimestamp && thread.lastTimestamp !== 0 && (
-                              <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                              {thread.partnerRole === 'admin' && (
+                                <Crown size={12} className="text-amber-400 shrink-0" />
+                              )}
+                            </h3>
+                            {thread.lastTimestamp && (
+                              <span className="text-[10px] text-muted-foreground shrink-0">
                                 {new Date(thread.lastTimestamp).toLocaleTimeString([], {
                                   hour: '2-digit',
                                   minute: '2-digit',
@@ -686,15 +794,10 @@ export default function ChatPage() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">{thread.lastMessage}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {thread.lastMessage || 'Click to open conversation'}
+                          </p>
                         </div>
-
-                        {/* Unread Badge */}
-                        {thread.unreadCount > 0 && (
-                          <span className="px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-black shrink-0">
-                            {thread.unreadCount}
-                          </span>
-                        )}
                       </button>
                     )
                   })
@@ -702,18 +805,17 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* Right Column: Active DM Chat Window */}
+            {/* Active Conversation Main View */}
             <div
-              className={`flex-1 flex flex-col bg-card/90 ${
+              className={`flex-1 flex flex-col bg-background/50 ${
                 showMobileDmList ? 'hidden md:flex' : 'flex'
               }`}
             >
               {selectedPartnerId ? (
                 <>
-                  {/* Chat Header */}
-                  <div className="px-5 py-3.5 border-b border-border flex items-center justify-between bg-secondary/40">
+                  {/* Conversation Top Header */}
+                  <div className="px-5 py-3.5 border-b border-border/80 bg-secondary/40 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {/* Mobile Back Button */}
                       <button
                         type="button"
                         onClick={() => setShowMobileDmList(true)}
@@ -752,47 +854,55 @@ export default function ChatPage() {
 
                   {/* Messages Stream */}
                   <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-3.5 scrollbar-thin">
-                    {isActiveDmLoading && (!activeDmData?.messages || activeDmData.messages.length === 0) ? (
-                      <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
-                        <Loader2 size={24} className="animate-spin text-primary" />
-                        <p className="text-xs font-semibold">Loading conversation...</p>
+                    {isActiveDmLoading && !activeDmData?.messages?.length ? (
+                      <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
+                        <Loader2 size={32} className="animate-spin text-primary" />
+                        <p className="text-xs font-bold uppercase tracking-wider">Loading conversation...</p>
                       </div>
                     ) : activeDmData?.messages?.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-center p-6 space-y-2">
-                        <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center text-primary">
-                          <MessageSquare size={24} />
-                        </div>
-                        <h4 className="text-xs font-bold text-foreground">Start of Conversation</h4>
-                        <p className="text-xs max-w-xs text-muted-foreground">
-                          Send a message to begin your direct conversation.
+                      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-6">
+                        <Mail size={40} className="text-muted-foreground/30 mb-3" />
+                        <h4 className="text-sm font-bold text-foreground">No messages in this thread</h4>
+                        <p className="text-xs max-w-xs mt-1">
+                          Send your first message below to begin direct communication.
                         </p>
                       </div>
                     ) : (
                       activeDmData?.messages?.map((msg: any) => {
-                        const isMe = msg.senderId === activeDmData?.currentUserId
+                        const isMine = msg.senderId === session?.user?.id
 
                         return (
                           <div
                             key={msg.id}
-                            className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in`}
+                            className={`flex flex-col ${
+                              isMine ? 'items-end' : 'items-start'
+                            }`}
                           >
                             <div
-                              className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed shadow-md break-words ${
-                                isMe
-                                  ? 'bg-primary text-primary-foreground font-medium rounded-tr-none'
-                                  : 'bg-secondary/90 border border-border text-foreground rounded-tl-none'
+                              className={`max-w-[80%] sm:max-w-[70%] p-3.5 rounded-3xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words shadow-sm ${
+                                isMine
+                                  ? 'bg-primary text-primary-foreground rounded-tr-none'
+                                  : 'bg-secondary/80 border border-border text-foreground rounded-tl-none'
                               }`}
                             >
-                              <p className="whitespace-pre-wrap">{msg.content}</p>
+                              {msg.content}
                             </div>
-                            <div className="flex items-center gap-1 mt-1 px-1 text-[10px] text-muted-foreground font-mono">
+
+                            <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground px-1">
                               <span>
                                 {new Date(msg.createdAt).toLocaleTimeString([], {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
                               </span>
-                              {isMe && <CheckCheck size={12} className={msg.isRead ? 'text-cyan-400' : 'opacity-40'} />}
+                              {isMine && (
+                                <span title={msg.isRead ? 'Read' : 'Delivered'}>
+                                  <CheckCheck
+                                    size={12}
+                                    className={msg.isRead ? 'text-cyan-400' : 'text-muted-foreground'}
+                                  />
+                                </span>
+                              )}
                             </div>
                           </div>
                         )
@@ -832,13 +942,13 @@ export default function ChatPage() {
                   </div>
                 </>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-center p-8">
-                  <div className="w-16 h-16 rounded-3xl bg-secondary flex items-center justify-center text-primary mb-3">
-                    <MessageSquare size={32} />
-                  </div>
-                  <h3 className="text-sm font-bold text-foreground">Select a conversation</h3>
-                  <p className="text-xs max-w-xs mt-1">
-                    Choose an existing chat thread or start a new message to Admin Support.
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
+                  <MessageSquare size={48} className="text-muted-foreground/30 mb-3" />
+                  <h3 className="text-base font-bold text-foreground uppercase tracking-wider">
+                    Select a Conversation
+                  </h3>
+                  <p className="text-xs max-w-sm mt-1">
+                    Choose a thread from the list on the left to start reading and replying to messages.
                   </p>
                 </div>
               )}

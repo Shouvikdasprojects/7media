@@ -17,6 +17,7 @@ import {
   getAdminRecentComments,
   deleteAdminComment,
 } from '@/app/actions/admin'
+import { CustomDialogModal } from '@/components/custom-dialog-modal'
 import {
   ShieldAlert,
   Users,
@@ -86,6 +87,17 @@ export default function AdminDashboardPage() {
 
   // Toast / Notification banner
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  })
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type })
@@ -174,25 +186,37 @@ export default function AdminDashboardPage() {
   }
 
   const handleDeleteMsg = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this message?')) return
-    const res = await deleteContactMessage(id)
-    if (res.success) {
-      showToast('Message removed.')
-      loadInbox()
-    } else {
-      showToast('Failed to delete message', 'error')
-    }
+    setDeleteDialog({
+      isOpen: true,
+      title: 'Delete Message',
+      message: 'Are you sure you want to permanently delete this contact inquiry?',
+      onConfirm: async () => {
+        const res = await deleteContactMessage(id)
+        if (res.success) {
+          showToast('Message removed.')
+          loadInbox()
+        } else {
+          showToast('Failed to delete message', 'error')
+        }
+      },
+    })
   }
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('Are you sure you want to remove this comment?')) return
-    const res = await deleteAdminComment(commentId)
-    if (res.success) {
-      showToast('Comment removed from title.')
-      setRecentComments((prev) => prev.filter((c) => c.id !== commentId))
-    } else {
-      showToast(res.error || 'Failed to delete comment', 'error')
-    }
+    setDeleteDialog({
+      isOpen: true,
+      title: 'Remove Comment',
+      message: 'Are you sure you want to moderate and remove this comment across all titles?',
+      onConfirm: async () => {
+        const res = await deleteAdminComment(commentId)
+        if (res.success) {
+          showToast('Comment removed from title.')
+          setRecentComments((prev) => prev.filter((c) => c.id !== commentId))
+        } else {
+          showToast(res.error || 'Failed to delete comment', 'error')
+        }
+      },
+    })
   }
 
   const handlePublishBroadcast = async (e: React.FormEvent) => {
@@ -982,6 +1006,18 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Custom Delete Confirmation Modal */}
+      <CustomDialogModal
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={deleteDialog.onConfirm}
+        type="danger"
+        title={deleteDialog.title}
+        message={deleteDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
 
       <Footer />
     </div>

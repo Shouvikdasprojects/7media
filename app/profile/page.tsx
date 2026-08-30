@@ -25,6 +25,7 @@ import {
   regenerateBackupCodes,
   update2FADeliveryEmail,
 } from '@/app/actions/two-factor'
+import { CustomDialogModal } from '@/components/custom-dialog-modal'
 import {
   User,
   Shield,
@@ -138,6 +139,7 @@ export default function ProfilePage() {
 
   // Status Notification
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [regenerateDialog, setRegenerateDialog] = useState(false)
 
   const notify = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ type, message })
@@ -414,11 +416,7 @@ export default function ProfilePage() {
   }
 
   // Regenerate Backup Codes
-  const handleRegenerateCodes = async () => {
-    if (!confirm('Are you sure you want to regenerate your 6 backup recovery codes? Any previous backup codes will be immediately invalidated.')) {
-      return
-    }
-
+  const performRegenerateCodes = async () => {
     setIs2FAActionLoading(true)
     const res = await regenerateBackupCodes()
     setIs2FAActionLoading(false)
@@ -434,6 +432,10 @@ export default function ProfilePage() {
     } else {
       notify(res.error || 'Failed to regenerate backup codes', 'error')
     }
+  }
+
+  const handleRegenerateCodes = () => {
+    setRegenerateDialog(true)
   }
 
   // Update 2FA Delivery Email
@@ -1879,6 +1881,18 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Custom Regenerate Codes Confirmation Dialog */}
+      <CustomDialogModal
+        isOpen={regenerateDialog}
+        onClose={() => setRegenerateDialog(false)}
+        onConfirm={performRegenerateCodes}
+        type="warning"
+        title="Regenerate Backup Codes"
+        message="Are you sure you want to generate 6 new emergency backup codes? Any previous recovery codes will be immediately invalidated."
+        confirmText="Generate New"
+        cancelText="Cancel"
+      />
 
       <Footer />
     </div>

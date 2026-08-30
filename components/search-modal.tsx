@@ -88,9 +88,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     }
   }, [])
 
+  const [voiceError, setVoiceError] = useState<string | null>(null)
+
   const toggleVoiceSearch = () => {
     if (!speechSupported || !recognitionRef.current) {
-      alert('Voice search is not supported in this browser. Please try Google Chrome or Edge.')
+      setVoiceError('Voice search is not supported in this browser. Please try Google Chrome or Edge.')
+      setTimeout(() => setVoiceError(null), 4000)
       return
     }
 
@@ -321,6 +324,13 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                   : 'border-border/80 focus:border-primary focus:bg-secondary focus:ring-2 focus:ring-primary/20'
               }`}
             />
+
+            {/* Voice Search Notification Badge */}
+            {voiceError && (
+              <div className="absolute -bottom-10 left-4 right-4 p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-medium text-center backdrop-blur-md shadow-lg animate-in fade-in duration-200 z-10">
+                {voiceError}
+              </div>
+            )}
 
             {/* Right Action Icons: Voice Search + Clear/Loading */}
             <div className="absolute right-3 flex items-center gap-1.5">

@@ -52,6 +52,8 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
     }
   }, [])
 
+  const [instructionNotice, setInstructionNotice] = useState(false)
+
   const handleInstallPWA = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt()
@@ -61,8 +63,7 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
       }
       setDeferredPrompt(null)
     } else {
-      // Fallback instruction
-      alert('To install 7MEDIA: Click your browser address bar menu (three dots) and select "Install 7MEDIA App" or "Add to Home Screen".')
+      setInstructionNotice(true)
     }
   }
 
@@ -185,6 +186,17 @@ export function DownloadModal({ isOpen, onClose }: DownloadModalProps) {
                 <Download size={18} />
                 <span>Install 7MEDIA App Now</span>
               </button>
+            )}
+
+            {instructionNotice && (
+              <div className="p-4 rounded-2xl border border-primary/40 bg-primary/10 text-xs text-zinc-200 space-y-1.5 animate-in fade-in duration-200">
+                <p className="font-bold text-primary flex items-center gap-1.5">
+                  <Zap size={14} /> Easy Installation Tip:
+                </p>
+                <p className="leading-relaxed">
+                  Click your browser address bar menu (three dots <strong>⋮</strong> or Share icon) and select <strong>"Install 7MEDIA App"</strong> or <strong>"Add to Home Screen"</strong>.
+                </p>
+              </div>
             )}
           </div>
         )}
