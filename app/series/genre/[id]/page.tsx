@@ -48,7 +48,7 @@ function SeriesGenreContent({ id }: { id: string }) {
     genre: String(genreId),
     language: language || undefined,
     sortBy,
-    minVotes: sortBy.startsWith('vote_average') ? 100 : undefined,
+    minVotes: sortBy?.startsWith('vote_average') ? 100 : undefined,
   })
 
   const shows = data?.results || []

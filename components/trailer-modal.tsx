@@ -31,7 +31,7 @@ export function TrailerModal({ isOpen, onClose, youtubeId, title }: TrailerModal
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md transition-opacity"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md transition-opacity"
       onClick={onClose}
       role="dialog"
       aria-modal="true"

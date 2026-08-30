@@ -6,7 +6,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { and, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { CatalogData, DEFAULT_USER_CATALOGS } from '@/lib/catalogs-shared'
+import { CatalogData, DEFAULT_USER_CATALOGS, mergeWithDefaultCatalogs } from '@/lib/catalogs-shared'
 
 async function getSessionUser() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -15,7 +15,7 @@ async function getSessionUser() {
 
 export async function getUserCatalogs(): Promise<{ catalogs: CatalogData[]; authenticated: boolean }> {
   const user = await getSessionUser()
-  if (!user) return { catalogs: DEFAULT_USER_CATALOGS, authenticated: false }
+  if (!user) return { catalogs: mergeWithDefaultCatalogs(), authenticated: false }
 
   try {
     const rows = await db
@@ -23,21 +23,6 @@ export async function getUserCatalogs(): Promise<{ catalogs: CatalogData[]; auth
       .from(catalogs)
       .where(eq(catalogs.userId, user.id))
       .orderBy(catalogs.id)
-
-    if (rows.length === 0) {
-      // Seed default catalogs for new user in database
-      for (const def of DEFAULT_USER_CATALOGS) {
-        await db.insert(catalogs).values({
-          userId: user.id,
-          catalogId: def.id,
-          name: def.name,
-          color: def.color,
-          thumbnail: def.thumbnail || 'Folder',
-          itemIds: JSON.stringify(def.itemIds),
-        }).onConflictDoNothing()
-      }
-      return { catalogs: DEFAULT_USER_CATALOGS, authenticated: true }
-    }
 
     const parsed: CatalogData[] = rows.map((r) => {
       let items: number[] = []
@@ -56,10 +41,28 @@ export async function getUserCatalogs(): Promise<{ catalogs: CatalogData[]; auth
       }
     })
 
-    return { catalogs: parsed, authenticated: true }
+    const merged = mergeWithDefaultCatalogs(parsed)
+
+    // If any default catalogs were not in DB, backfill them asynchronously
+    if (rows.length < merged.length) {
+      for (const def of merged) {
+        if (!rows.some((r) => r.catalogId === def.id)) {
+          await db.insert(catalogs).values({
+            userId: user.id,
+            catalogId: def.id,
+            name: def.name,
+            color: def.color,
+            thumbnail: def.thumbnail || 'Folder',
+            itemIds: JSON.stringify(def.itemIds || []),
+          }).onConflictDoNothing().catch(() => {})
+        }
+      }
+    }
+
+    return { catalogs: merged, authenticated: true }
   } catch (error) {
     console.error('Error fetching user catalogs:', error)
-    return { catalogs: DEFAULT_USER_CATALOGS, authenticated: true }
+    return { catalogs: mergeWithDefaultCatalogs(), authenticated: true }
   }
 }
 

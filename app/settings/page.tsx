@@ -248,6 +248,17 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const el = document.querySelector(window.location.hash)
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth' })
+        }, 150)
+      }
+    }
+  }, [loaded])
+
+  useEffect(() => {
     if (!loaded) return
     const root = document.documentElement
     root.dataset.theme = theme.toLowerCase().replace(/\s+/g, '-')
@@ -258,6 +269,10 @@ export default function SettingsPage() {
     if (theme === 'Sakura') root.classList.add('theme-sakura')
     if (theme === 'Apple Theme') root.classList.add('theme-apple')
     document.cookie = `7media-theme=${encodeURIComponent(theme)}; path=/; max-age=31536000; samesite=lax`
+    try {
+      localStorage.setItem('7media-theme', theme)
+    } catch {}
+    window.dispatchEvent(new CustomEvent('7media-theme-changed', { detail: theme }))
   }, [theme, loaded])
 
   const updatePrefs = (next: Partial<Preferences>, text: string) => {
@@ -619,24 +634,28 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Help & FAQ Section */}
+        {/* Help & Policies Section */}
         <section id="help" className="scroll-mt-24 py-8">
           <SectionHeader
-            title="Help & FAQ"
-            description="Quick links into the help center and policies."
+            title="Help, Policies & Community"
+            description="Access legal documentation, contact channels, and platform guides."
           />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {[
-              ['FAQ index', '/faq'],
-              ['Content source', '/faq#content'],
-              ['Search availability', '/search'],
-              ['Playback issues', '/faq#playback'],
-              ['Watch history', '/history'],
+              ['About 7MEDIA', '/about'],
+              ['Help & FAQ Hub', '/faq'],
+              ['Contact & Support', '/contact'],
+              ['Terms of Service', '/terms'],
+              ['Privacy Policy', '/privacy'],
+              ['DMCA Guidelines', '/dmca'],
+              ['Badges & Rewards', '/badges'],
+              ['Watch History', '/history'],
+              ['Watch Party Lounge', '/party'],
             ].map(([label, href]) => (
               <Link
                 key={label}
                 href={href}
-                className="flex items-center justify-between rounded-2xl border border-border bg-card/50 p-4 text-xs font-bold uppercase tracking-wider transition hover:border-accent hover:bg-accent/5 active:scale-95"
+                className="flex items-center justify-between rounded-2xl border border-border bg-card/50 p-4 text-xs font-bold uppercase tracking-wider transition hover:border-accent hover:bg-accent/5 active:scale-95 shadow-sm"
               >
                 <span>{label}</span>
                 <ChevronDown size={16} className="-rotate-90 text-accent" />

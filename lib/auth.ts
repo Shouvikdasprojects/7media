@@ -37,17 +37,27 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      enabled: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID || '',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+      enabled: Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+    },
+  },
   session: {
     expiresIn: 60 * 60 * 24 * 7,
     updateAge: 60 * 60 * 24,
   },
   advanced: {
-    defaultCookieAttributes:
-      process.env.NODE_ENV === 'development'
-        ? {
-            sameSite: 'none' as const,
-            secure: true,
-          }
-        : {},
+    defaultCookieAttributes: {
+      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+    },
   },
 })

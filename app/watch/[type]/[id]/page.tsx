@@ -62,7 +62,12 @@ export default function WatchPage({
 
   const data: any = isMovie ? movieData : showData
   const title = data ? (isMovie ? data.title : data.name) || 'Untitled' : 'Loading...'
-  const recommendations = data?.recommendations?.results || []
+  const recommendations =
+    (data?.recommendations?.results && data.recommendations.results.length > 0)
+      ? data.recommendations.results
+      : (data?.similar?.results && data.similar.results.length > 0)
+      ? data.similar.results
+      : []
   const backdropUrl = data?.backdrop_path
     ? `https://image.tmdb.org/t/p/original${data.backdrop_path}`
     : null

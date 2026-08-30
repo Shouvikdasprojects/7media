@@ -71,7 +71,7 @@ function SeriesContent() {
     provider: filters.provider,
     country: filters.country,
     sortBy: filters.sortBy,
-    minVotes: filters.sortBy.startsWith('vote_average') ? 100 : undefined,
+    minVotes: filters.sortBy?.startsWith('vote_average') ? 100 : undefined,
   })
 
   const { data: trendingData, isLoading: trendingLoading } = useTrendingShows('week', page)

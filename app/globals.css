@@ -168,28 +168,195 @@ html[data-theme='sakura'] {
   --ring: #ff9fc1;
 }
 
-html[data-theme='apple-theme'] {
+/* ========================================================================= */
+/* APPLE THEME (iOS / macOS) GLASSMORPHISM DESIGN SYSTEM                     */
+/* ========================================================================= */
+
+html[data-theme='apple-theme'],
+html.theme-apple {
   --background: #000000;
   --foreground: #f5f5f7;
-  --card: #1c1c1e;
+  --card: rgba(28, 28, 30, 0.72);
   --card-foreground: #f5f5f7;
-  --popover: #1c1c1e;
+  --popover: rgba(28, 28, 30, 0.82);
   --popover-foreground: #f5f5f7;
-  --secondary: #2c2c2e;
+  --secondary: rgba(44, 44, 46, 0.65);
   --secondary-foreground: #f5f5f7;
-  --muted: #2c2c2e;
+  --muted: rgba(44, 44, 46, 0.5);
   --muted-foreground: #a1a1a6;
-  --border: #48484a;
-  --input: #48484a;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.08);
   --primary: #0a84ff;
+  --primary-foreground: #ffffff;
   --accent: #0a84ff;
   --accent-foreground: #ffffff;
-  --ring: #0a84ff;
+  --destructive: #ff453a;
+  --ring: rgba(10, 132, 255, 0.5);
+  --radius: 1.125rem;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
   color-scheme: dark;
 }
 
-html[data-theme='apple-theme'] body {
+html[data-theme='apple-theme'].light,
+html.theme-apple.light {
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --card: rgba(255, 255, 255, 0.75);
+  --card-foreground: #1d1d1f;
+  --popover: rgba(255, 255, 255, 0.85);
+  --popover-foreground: #1d1d1f;
+  --secondary: rgba(240, 240, 245, 0.7);
+  --secondary-foreground: #1d1d1f;
+  --muted: rgba(220, 220, 225, 0.6);
+  --muted-foreground: #86868b;
+  --border: rgba(0, 0, 0, 0.08);
+  --input: rgba(0, 0, 0, 0.06);
+  --primary: #0071e3;
+  --primary-foreground: #ffffff;
+  --accent: #0071e3;
+  --accent-foreground: #ffffff;
+  --destructive: #ff3b30;
+  --ring: rgba(0, 113, 227, 0.4);
+  color-scheme: light;
+}
+
+/* 1. Global Typography & Spacing Under Apple Theme */
+html[data-theme='apple-theme'] body,
+html.theme-apple body {
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+  letter-spacing: -0.012em;
   background-image: none;
+}
+
+html[data-theme='apple-theme'] h1,
+html[data-theme='apple-theme'] h2,
+html[data-theme='apple-theme'] h3,
+html[data-theme='apple-theme'] .font-display,
+html.theme-apple h1,
+html.theme-apple h2,
+html.theme-apple h3,
+html.theme-apple .font-display {
+  font-family: var(--font-display) !important;
+  letter-spacing: -0.03em !important;
+  font-weight: 700;
+}
+
+/* 2. Frosted Glass Material Panels (Cards, Modals, Panels, Navbars) */
+html[data-theme='apple-theme'] nav,
+html.theme-apple nav,
+html[data-theme='apple-theme'] header nav,
+html.theme-apple header nav {
+  background-color: rgba(22, 22, 24, 0.72) !important;
+  backdrop-filter: blur(28px) saturate(190%) contrast(105%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(105%) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-theme='apple-theme'] .bg-card,
+html[data-theme='apple-theme'] .bg-popover,
+html[data-theme='apple-theme'] .bg-zinc-950,
+html[data-theme='apple-theme'] .bg-zinc-900,
+html[data-theme='apple-theme'] [role="dialog"] > div,
+html[data-theme='apple-theme'] .glass-panel,
+html.theme-apple .bg-card,
+html.theme-apple .bg-popover,
+html.theme-apple .bg-zinc-950,
+html.theme-apple .bg-zinc-900,
+html.theme-apple [role="dialog"] > div,
+html.theme-apple .glass-panel {
+  backdrop-filter: blur(24px) saturate(180%) contrast(100%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%) contrast(100%);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 35px -5px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* 3. Apple Buttons, Pills & Controls */
+html[data-theme='apple-theme'] button,
+html[data-theme='apple-theme'] a,
+html.theme-apple button,
+html.theme-apple a {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html[data-theme='apple-theme'] .bg-primary,
+html.theme-apple .bg-primary {
+  background-color: #0a84ff !important;
+  background-image: linear-gradient(180deg, #1c92ff 0%, #0a84ff 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 18px rgba(10, 132, 255, 0.35) !important;
+}
+
+html[data-theme='apple-theme'] .bg-primary:hover,
+html.theme-apple .bg-primary:hover {
+  background-image: linear-gradient(180deg, #2ea0ff 0%, #158aff 100%) !important;
+  box-shadow: 0 6px 24px rgba(10, 132, 255, 0.45) !important;
+}
+
+html[data-theme='apple-theme'] .text-primary,
+html.theme-apple .text-primary,
+html[data-theme='apple-theme'] .text-accent,
+html.theme-apple .text-accent {
+  color: #0a84ff !important;
+}
+
+/* 4. Hairline Borders & Refined Dividers */
+html[data-theme='apple-theme'] hr,
+html[data-theme='apple-theme'] .border-white\/10,
+html[data-theme='apple-theme'] .border-white\/15,
+html[data-theme='apple-theme'] .border-white\/20,
+html[data-theme='apple-theme'] .border-border,
+html.theme-apple hr,
+html.theme-apple .border-white\/10,
+html.theme-apple .border-white\/15,
+html.theme-apple .border-white\/20,
+html.theme-apple .border-border {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* 5. Apple Video Player & HUD Glass Overlays */
+html[data-theme='apple-theme'] #cinema-player-box .backdrop-blur-xl,
+html[data-theme='apple-theme'] #cinema-player-box .backdrop-blur-md,
+html.theme-apple #cinema-player-box .backdrop-blur-xl,
+html.theme-apple #cinema-player-box .backdrop-blur-md {
+  background-color: rgba(20, 20, 22, 0.72) !important;
+  backdrop-filter: blur(28px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 6. Apple Watch Party Chat Panel */
+html[data-theme='apple-theme'] .chat-glass-panel,
+html.theme-apple .chat-glass-panel {
+  background-color: rgba(22, 22, 24, 0.75) !important;
+  backdrop-filter: blur(30px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+/* 7. Browser Fallback when backdrop-filter is NOT supported */
+@supports not (backdrop-filter: blur(1px)) {
+  @supports not (-webkit-backdrop-filter: blur(1px)) {
+    html[data-theme='apple-theme'] nav,
+    html[data-theme='apple-theme'] .bg-card,
+    html[data-theme='apple-theme'] .bg-popover,
+    html[data-theme='apple-theme'] .bg-zinc-950,
+    html[data-theme='apple-theme'] .bg-zinc-900,
+    html[data-theme='apple-theme'] [role="dialog"] > div,
+    html.theme-apple nav,
+    html.theme-apple .bg-card,
+    html.theme-apple .bg-popover,
+    html.theme-apple .bg-zinc-950,
+    html.theme-apple .bg-zinc-900,
+    html.theme-apple [role="dialog"] > div {
+      background-color: #161618 !important;
+      opacity: 1 !important;
+    }
+  }
 }
 
 @media (prefers-color-scheme: dark) {

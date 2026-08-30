@@ -255,11 +255,15 @@ function SearchPageContent() {
                 <span className="text-xs font-semibold text-muted-foreground">Page {page}</span>
                 <button
                   type="button"
+                  disabled={
+                    Boolean(tmdbData?.total_pages && page >= tmdbData.total_pages) &&
+                    !Boolean(animeData?.pageInfo?.hasNextPage)
+                  }
                   onClick={() => {
                     setPage((current) => current + 1)
                     window.scrollTo({ top: 0, behavior: 'smooth' })
                   }}
-                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-secondary transition"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:opacity-40 hover:bg-secondary transition"
                 >
                   Next <ArrowRight size={14} />
                 </button>

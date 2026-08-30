@@ -1,7 +1,19 @@
 import { tmdbClient } from '@/lib/tmdb/client'
 import { NextRequest, NextResponse } from 'next/server'
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 
 export async function GET(req: NextRequest) {
+  // Rate Limiting: 240 requests per minute per IP
+  const clientIp = getClientIp(req)
+  const rateLimitResult = checkRateLimit(`tmdb_root:${clientIp}`, {
+    limit: 240,
+    windowMs: 60 * 1000,
+  })
+
+  if (!rateLimitResult.success) {
+    return rateLimitResponse(rateLimitResult, 'Too many requests to TMDB proxy.')
+  }
+
   const { searchParams } = new URL(req.url)
   const endpoint = searchParams.get('endpoint')
 
@@ -10,6 +22,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const rawPage = searchParams.get('page') || '1'
+    const page = Math.max(1, Math.min(parseInt(rawPage, 10) || 1, 500))
+
     // Route to appropriate function
     if (endpoint === 'trending-movies-day') {
       const data = await tmdbClient.getTrendingMovies('day')
@@ -28,31 +43,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data)
     }
     if (endpoint === 'popular-movies') {
-      const page = searchParams.get('page') || '1'
-      const data = await tmdbClient.getPopularMovies(parseInt(page))
+      const data = await tmdbClient.getPopularMovies(page)
       return NextResponse.json(data)
     }
     if (endpoint === 'popular-shows') {
-      const page = searchParams.get('page') || '1'
-      const data = await tmdbClient.getPopularShows(parseInt(page))
+      const data = await tmdbClient.getPopularShows(page)
       return NextResponse.json(data)
     }
     if (endpoint === 'top-rated-movies') {
-      const page = searchParams.get('page') || '1'
-      const data = await tmdbClient.getTopRatedMovies(parseInt(page))
+      const data = await tmdbClient.getTopRatedMovies(page)
       return NextResponse.json(data)
     }
     if (endpoint === 'top-rated-shows') {
-      const page = searchParams.get('page') || '1'
-      const data = await tmdbClient.getTopRatedShows(parseInt(page))
+      const data = await tmdbClient.getTopRatedShows(page)
       return NextResponse.json(data)
     }
 
     return NextResponse.json({ error: 'Unknown endpoint' }, { status: 404 })
   } catch (error) {
-    console.error('TMDB API Error:', error)
+    console.error('[TMDB API Root Error]', error)
     return NextResponse.json(
-      { error: 'Failed to fetch from TMDB' },
+      { error: 'Failed to fetch from media provider' },
       { status: 500 }
     )
   }

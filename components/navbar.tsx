@@ -32,6 +32,18 @@ const SearchModal = dynamic(() => import('./search-modal').then((m) => m.SearchM
 const NotificationsModal = dynamic(() => import('./notifications-modal').then((m) => m.NotificationsModal), { ssr: false })
 const PwaInstallBanner = dynamic(() => import('./pwa-install-banner').then((m) => m.PwaInstallBanner), { ssr: false })
 const MoodRouletteModal = dynamic(() => import('./mood-roulette-modal').then((m) => m.MoodRouletteModal), { ssr: false })
+const DownloadModal = dynamic(() => import('./download-modal').then((m) => m.DownloadModal), { ssr: false })
+
+const AVATAR_MAP: Record<string, string> = {
+  crimson: '🎬',
+  anime: '⚡',
+  cyber: '🌌',
+  director: '🎥',
+  shadow: '🕶️',
+  star: '⭐',
+  retro: '📼',
+  popcorn: '🍿',
+}
 
 export function Navbar() {
   const pathname = usePathname()
@@ -44,10 +56,67 @@ export function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [rouletteOpen, setRouletteOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<string>('Dark')
   const [quality, setQuality] = useState<'HD' | 'Default' | 'Performance'>('Default')
+  const [avatar, setAvatar] = useState<string | null>(null)
   const accountRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
+
+  // Real-time synchronization of Avatar & Theme across profile, settings and navbar
+  useEffect(() => {
+    const readAvatar = () => {
+      try {
+        const stored = localStorage.getItem('7media_avatar')
+        if (stored) setAvatar(stored)
+        else if (session?.user?.image) setAvatar(session.user.image)
+      } catch {}
+    }
+
+    readAvatar()
+
+    const handleAvatarChange = (e: any) => {
+      if (e?.detail) setAvatar(e.detail)
+      else readAvatar()
+    }
+
+    window.addEventListener('7media-avatar-changed', handleAvatarChange)
+    window.addEventListener('storage', readAvatar)
+
+    return () => {
+      window.removeEventListener('7media-avatar-changed', handleAvatarChange)
+      window.removeEventListener('storage', readAvatar)
+    }
+  }, [session?.user?.image])
+
+  // Real-time synchronization of Theme across settings and navbar
+  useEffect(() => {
+    const readTheme = () => {
+      try {
+        const savedCookie = document.cookie.match(/(?:^|; )7media-theme=([^;]+)/)?.[1]
+        const savedStorage = localStorage.getItem('7media-theme')
+        const currentTheme = savedStorage || (savedCookie ? decodeURIComponent(savedCookie) : 'Dark')
+        if (currentTheme) setTheme(currentTheme)
+      } catch {}
+    }
+
+    readTheme()
+
+    const handleThemeChange = (e: any) => {
+      if (e?.detail) {
+        setTheme(e.detail)
+      } else {
+        readTheme()
+      }
+    }
+
+    window.addEventListener('7media-theme-changed', handleThemeChange)
+    window.addEventListener('storage', readTheme)
+
+    return () => {
+      window.removeEventListener('7media-theme-changed', handleThemeChange)
+      window.removeEventListener('storage', readTheme)
+    }
+  }, [])
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -253,7 +322,7 @@ export function Navbar() {
                 type="button"
                 onClick={() => setAccountOpen((open) => !open)}
                 className={
-                  'flex items-center gap-1.5 rounded-full p-2 pl-2.5 pr-2.5 text-xs font-bold transition-all touch-manipulation active:scale-95 ' +
+                  'flex items-center gap-1.5 rounded-full p-1.5 pl-2 pr-2 text-xs font-bold transition-all touch-manipulation active:scale-95 ' +
                   (accountOpen
                     ? 'bg-primary text-primary-foreground shadow-md'
                     : 'text-white/80 hover:bg-white/10 hover:text-white')
@@ -261,7 +330,13 @@ export function Navbar() {
                 aria-label="Account menu"
                 aria-expanded={accountOpen}
               >
-                <User size={17} />
+                {avatar && avatar.startsWith('http') ? (
+                  <img src={avatar} alt="Avatar" className="w-5 h-5 rounded-full object-cover border border-white/40" />
+                ) : avatar && AVATAR_MAP[avatar] ? (
+                  <span className="text-sm">{AVATAR_MAP[avatar]}</span>
+                ) : (
+                  <User size={17} />
+                )}
                 <ChevronDown
                   size={13}
                   className={'transition-transform duration-200 ' + (accountOpen ? 'rotate-180' : '')}
@@ -279,18 +354,34 @@ export function Navbar() {
                 aria-hidden={!accountOpen}
               >
                 {/* Profile Header */}
-                <div className="border-b border-white/10 px-3.5 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">{t('account')}</p>
-                  <p className="truncate text-sm font-bold text-white mt-0.5">
-                    {session?.user?.name ?? 'Guest profile'}
-                  </p>
-                  {session?.user?.email && (
-                    <p className="truncate text-xs text-white/60">{session.user.email}</p>
-                  )}
+                <div className="flex items-center gap-3 border-b border-white/10 px-3.5 py-3">
+                  <div className="w-9 h-9 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 overflow-hidden">
+                    {avatar && avatar.startsWith('http') ? (
+                      <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : avatar && AVATAR_MAP[avatar] ? (
+                      <span className="text-lg">{AVATAR_MAP[avatar]}</span>
+                    ) : (
+                      <User size={18} className="text-white/80" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-white">
+                      {session?.user?.name ?? 'Guest profile'}
+                    </p>
+                    <p className="truncate text-[10px] text-white/50">{session?.user?.email ?? 'Sign in to sync watchlist'}</p>
+                  </div>
                 </div>
 
                 {/* Profile Navigation Links */}
                 <div className="py-1.5 space-y-0.5">
+                  <Link
+                    href="/profile"
+                    onClick={() => setAccountOpen(false)}
+                    className="flex items-center gap-2.5 rounded-2xl px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 transition"
+                  >
+                    <User size={15} /> <span>My Profile</span>
+                  </Link>
+
                   <Link
                     href="/badges"
                     onClick={() => setAccountOpen(false)}
@@ -315,30 +406,30 @@ export function Navbar() {
                     <Settings size={15} /> {t('settings')}
                   </Link>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTheme((current) => (current === 'dark' ? 'light' : 'dark'))
-                      setNotice('Theme changed to ' + (theme === 'dark' ? 'light' : 'dark'))
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
+                  <Link
+                    href="/settings#appearance"
+                    onClick={() => setAccountOpen(false)}
+                    className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
                   >
-                    <Palette size={15} /> {t('themes')} <span className="ml-auto text-[10px] text-white/50">{theme}</span>
-                  </button>
+                    <span className="flex items-center gap-2.5">
+                      <Palette size={15} /> {t('themes')}
+                    </span>
+                    <span className="text-[10px] text-white/50">{theme}</span>
+                  </Link>
 
-                  <button
-                    type="button"
-                    onClick={toggleLanguage}
+                  <Link
+                    href="/settings#language"
+                    onClick={() => setAccountOpen(false)}
                     className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
                   >
                     <span className="flex items-center gap-2.5">
                       <Languages size={15} /> {t('language')}
                     </span>
                     <span className="text-[10px] font-bold text-accent">{language}</span>
-                  </button>
+                  </Link>
                 </div>
 
-                {/* Notifications, Discord & FAQ */}
+                {/* Account Controls & FAQ */}
                 <div className="border-t border-white/10 pt-1">
                   {session?.user ? (
                     <button
@@ -447,6 +538,20 @@ export function Navbar() {
               ))}
               <div className="mt-2 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
                 <Link
+                  href="/profile"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-primary hover:bg-white/10"
+                >
+                  {avatar && avatar.startsWith('http') ? (
+                    <img src={avatar} alt="Avatar" className="w-4 h-4 rounded-full object-cover" />
+                  ) : avatar && AVATAR_MAP[avatar] ? (
+                    <span>{AVATAR_MAP[avatar]}</span>
+                  ) : (
+                    <User size={15} />
+                  )}
+                  <span>My Profile</span>
+                </Link>
+                <Link
                   href="/badges"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-yellow-400 hover:bg-white/10"
@@ -479,6 +584,22 @@ export function Navbar() {
           </div>
         )}
       </nav>
+
+      {/* ========================================================================= */}
+      {/* GLOBAL MODALS & DIALOGS                                                   */}
+      {/* ========================================================================= */}
+      {searchOpen && (
+        <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      )}
+      {notifOpen && (
+        <NotificationsModal isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
+      )}
+      {rouletteOpen && (
+        <MoodRouletteModal isOpen={rouletteOpen} onClose={() => setRouletteOpen(false)} />
+      )}
+      {downloadOpen && (
+        <DownloadModal isOpen={downloadOpen} onClose={() => setDownloadOpen(false)} />
+      )}
     </>
   )
 }

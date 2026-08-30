@@ -4,11 +4,19 @@ import useSWR from 'swr'
 import { AniListMedia, AniListPageResponse } from './types'
 
 const fetcher = async (url: string) => {
-  const res = await fetch(url)
-  if (!res.ok) {
-    throw new Error('Failed to fetch from AniList API')
+  try {
+    let res = await fetch(url)
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, 600))
+      res = await fetch(url)
+    }
+    if (!res.ok) {
+      return { pageInfo: { total: 0, currentPage: 1, lastPage: 1, hasNextPage: false, perPage: 20 }, media: [] }
+    }
+    return await res.json()
+  } catch {
+    return { pageInfo: { total: 0, currentPage: 1, lastPage: 1, hasNextPage: false, perPage: 20 }, media: [] }
   }
-  return res.json()
 }
 
 export function useTrendingAnime(page = 1, perPage = 20) {

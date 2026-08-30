@@ -31,33 +31,24 @@ export function SafetyBanner() {
           </button>
         </div>
 
-        {/* Community */}
+        {/* Quick Hub */}
         <div className="flex items-center justify-between gap-4 bg-card border border-border rounded-2xl px-5 py-4">
           <p className="text-sm text-foreground">
-            <span className="font-semibold">Join the community</span>{' '}
-            <span className="text-muted-foreground">&amp; stay up to date</span>
+            <span className="font-semibold">Watch with Friends</span>{' '}
+            <span className="text-muted-foreground">&amp; explore together</span>
           </p>
           <div className="flex items-center gap-2">
             <a
-              href="https://discord.com" target="_blank" rel="noreferrer"
-              className="p-2.5 rounded-full bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-              aria-label="Join our Discord"
+              href="/party"
+              className="px-3.5 py-2 rounded-xl bg-accent text-accent-foreground text-xs font-bold hover:bg-accent/90 transition-all active:scale-95 shadow-sm"
             >
-              <MessageCircle size={17} />
+              Watch Party
             </a>
             <a
-              href="https://discord.com" target="_blank" rel="noreferrer"
-              className="p-2.5 rounded-full bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-              aria-label="Join our Telegram"
+              href="/contact"
+              className="px-3.5 py-2 rounded-xl bg-secondary text-secondary-foreground text-xs font-bold hover:bg-secondary/80 border border-border transition-all active:scale-95"
             >
-              <Send size={17} />
-            </a>
-            <a
-              href="https://discord.com" target="_blank" rel="noreferrer"
-              className="p-2.5 rounded-full bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-              aria-label="Join our WhatsApp"
-            >
-              <Phone size={17} />
+              Support Desk
             </a>
           </div>
         </div>

@@ -52,6 +52,19 @@ export const verification = pgTable('verification', {
   updatedAt: timestamp('updatedAt').defaultNow(),
 })
 
+export const userTwoFactor = pgTable('user_two_factor', {
+  id: text('id').primaryKey(),
+  userId: text('userId')
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  enabled: boolean('enabled').notNull().default(false),
+  deliveryEmail: text('deliveryEmail'),
+  backupCodes: text('backupCodes').notNull(), // JSON string array e.g. ["12345678", ...]
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+})
+
 // App tables
 export const watchlist = pgTable(
   'watchlist',

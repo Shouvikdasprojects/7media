@@ -99,8 +99,8 @@ export function HeroCarousel() {
           <div className="absolute inset-0">
             <Image
               key={currentMovie.id}
-              src={backdropUrl || "/placeholder.svg"}
-              alt=""
+              src={backdropUrl}
+              alt={currentMovie.title || 'Featured movie'}
               fill
               className="object-cover object-top md:object-center animate-in fade-in duration-700"
               priority

@@ -17,7 +17,8 @@ import {
   Flame,
   Star,
   Clapperboard,
-  Heart
+  Heart,
+  FolderPlus
 } from 'lucide-react'
 import { useSession } from '@/lib/auth-client'
 import {
@@ -32,7 +33,12 @@ import {
 } from '@/app/actions/catalogs'
 import {
   type CatalogData,
-  DEFAULT_USER_CATALOGS
+  DEFAULT_USER_CATALOGS,
+  mergeWithDefaultCatalogs,
+  CATALOGS_CHANGED_EVENT,
+  WATCHLIST_CHANGED_EVENT,
+  dispatchCatalogsUpdated,
+  dispatchWatchlistUpdated,
 } from '@/lib/catalogs-shared'
 
 interface WatchlistButtonProps {
@@ -61,7 +67,7 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
   const router = useRouter()
   const { data: session } = useSession()
   const [saved, setSaved] = useState(false)
-  const [catalogs, setCatalogs] = useState<CatalogData[]>(DEFAULT_USER_CATALOGS)
+  const [catalogs, setCatalogs] = useState<CatalogData[]>(() => mergeWithDefaultCatalogs())
   const [showFolderMenu, setShowFolderMenu] = useState(false)
   const [isCreatingNew, setIsCreatingNew] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -69,31 +75,71 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
   const [isPending, startTransition] = useTransition()
   const menuRef = useRef<HTMLDivElement>(null)
 
+  // Load catalogs and check watchlist status
   useEffect(() => {
     let active = true
-    if (session?.user) {
-      isInWatchlist(item.id, item.type).then((result) => {
-        if (active) setSaved(result)
-      })
-      getUserCatalogs().then((res) => {
-        if (active && res && Array.isArray(res.catalogs) && res.catalogs.length > 0) {
-          setCatalogs(res.catalogs)
-        }
-      })
-    } else {
-      try {
-        const localSaved = localStorage.getItem('7media_catalogs')
-        if (localSaved) {
-          const parsed = JSON.parse(localSaved)
-          if (Array.isArray(parsed)) setCatalogs(parsed)
-        }
-      } catch {}
+
+    const loadData = async () => {
+      if (session?.user) {
+        try {
+          const inList = await isInWatchlist(item.id, item.type)
+          if (active) setSaved(inList)
+
+          const res = await getUserCatalogs()
+          if (active && res && Array.isArray(res.catalogs)) {
+            const merged = mergeWithDefaultCatalogs(res.catalogs)
+            setCatalogs(merged)
+            try {
+              localStorage.setItem('7media_catalogs', JSON.stringify(merged))
+            } catch {}
+          }
+        } catch {}
+      } else {
+        // Guest mode fallback
+        try {
+          const localSavedCats = localStorage.getItem('7media_catalogs')
+          const parsed = localSavedCats ? JSON.parse(localSavedCats) : []
+          const merged = mergeWithDefaultCatalogs(parsed)
+          if (active) setCatalogs(merged)
+
+          const localWatchlist = localStorage.getItem('7media_watchlist')
+          if (localWatchlist) {
+            const list = JSON.parse(localWatchlist)
+            if (Array.isArray(list)) {
+              const exists = list.some((i: any) => i.tmdbId === item.id || i.id === item.id)
+              if (active) setSaved(exists)
+            }
+          }
+        } catch {}
+      }
     }
+
+    loadData()
+
+    // Listen for global catalog and watchlist updates
+    const handleCatalogsChanged = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setCatalogs(mergeWithDefaultCatalogs(e.detail))
+      } else {
+        loadData()
+      }
+    }
+
+    const handleWatchlistChanged = () => {
+      loadData()
+    }
+
+    window.addEventListener(CATALOGS_CHANGED_EVENT, handleCatalogsChanged)
+    window.addEventListener(WATCHLIST_CHANGED_EVENT, handleWatchlistChanged)
+
     return () => {
       active = false
+      window.removeEventListener(CATALOGS_CHANGED_EVENT, handleCatalogsChanged)
+      window.removeEventListener(WATCHLIST_CHANGED_EVENT, handleWatchlistChanged)
     }
   }, [session?.user, item.id, item.type])
 
+  // Close dropdown on click outside
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -105,50 +151,67 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [])
 
+  // Quick toggle main watchlist
   const handleQuickToggle = () => {
-    if (!session?.user) {
-      router.push('/sign-in')
-      return
-    }
-
     startTransition(async () => {
       if (saved) {
-        await removeFromAllCatalogs(item.id, item.type)
+        // Remove from watchlist
+        if (session?.user) {
+          await removeFromWatchlist(item.id, item.type)
+        } else {
+          try {
+            const local = localStorage.getItem('7media_watchlist')
+            if (local) {
+              const list = JSON.parse(local).filter((i: any) => (i.tmdbId || i.id) !== item.id)
+              localStorage.setItem('7media_watchlist', JSON.stringify(list))
+            }
+          } catch {}
+        }
         setSaved(false)
-        // update local catalogs state
-        setCatalogs((prev) =>
-          prev.map((c) => ({
-            ...c,
-            itemIds: (c.itemIds || []).filter((id) => id !== item.id),
-          }))
-        )
+        dispatchWatchlistUpdated()
       } else {
-        const res = await addToWatchlist({
+        // Add to main watchlist
+        const payload = {
           tmdbId: item.id,
           mediaType: item.type,
           title: item.title,
           posterPath: item.posterPath,
           rating: item.voteAverage ? item.voteAverage.toFixed(1) : null,
-        })
-        if (res.success) {
-          setSaved(true)
-          // Auto add to main watchlist and type-specific folder (movies/series/anime)
-          const typeFolderId = item.type === 'movie' ? 'movies' : 'series'
-          setCatalogs((prev) =>
-            prev.map((c) => {
-              if (c.id === 'watchlist' || c.id === typeFolderId) {
-                const nextIds = c.itemIds?.includes(item.id) ? c.itemIds : [...(c.itemIds || []), item.id]
-                return { ...c, itemIds: nextIds }
-              }
-              return c
-            })
-          )
         }
+
+        if (session?.user) {
+          await addToWatchlist(payload)
+        } else {
+          try {
+            const local = localStorage.getItem('7media_watchlist')
+            const list = local ? JSON.parse(local) : []
+            if (!list.some((i: any) => (i.tmdbId || i.id) === item.id)) {
+              list.unshift(payload)
+              localStorage.setItem('7media_watchlist', JSON.stringify(list))
+            }
+          } catch {}
+        }
+        setSaved(true)
+
+        // Also auto-add to type-specific default folder
+        const typeFolderId = item.type === 'movie' ? 'movies' : 'series'
+        const nextCats = catalogs.map((c) => {
+          if (c.id === 'watchlist' || c.id === typeFolderId) {
+            const itemIds = c.itemIds || []
+            if (!itemIds.includes(item.id)) {
+              return { ...c, itemIds: [...itemIds, item.id] }
+            }
+          }
+          return c
+        })
+        setCatalogs(nextCats)
+        dispatchCatalogsUpdated(nextCats)
+        dispatchWatchlistUpdated()
       }
     })
   }
 
-  // Toggle item in a specific folder (Add or Remove)
+  // Toggle item in specific folder (Add or Remove)
   const handleToggleFolder = async (cat: CatalogData, e: React.MouseEvent) => {
     e.stopPropagation()
     const inThisFolder = cat.id === 'watchlist' ? saved : cat.itemIds?.includes(item.id)
@@ -158,9 +221,10 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
       return
     }
 
+    const currentIds = Array.isArray(cat.itemIds) ? cat.itemIds : []
     const updatedIds = inThisFolder
-      ? (cat.itemIds || []).filter((id) => id !== item.id)
-      : [...(cat.itemIds || []), item.id]
+      ? currentIds.filter((id) => id !== item.id)
+      : [...currentIds, item.id]
 
     const updatedCat: CatalogData = {
       ...cat,
@@ -169,10 +233,10 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
 
     const nextList = catalogs.map((c) => (c.id === cat.id ? updatedCat : c))
     setCatalogs(nextList)
+    dispatchCatalogsUpdated(nextList)
 
     if (session?.user) {
       await saveUserCatalog(updatedCat)
-      // If added to any folder, also make sure it's in main watchlist
       if (!saved && !inThisFolder) {
         await addToWatchlist({
           tmdbId: item.id,
@@ -182,34 +246,59 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
           rating: item.voteAverage ? item.voteAverage.toFixed(1) : null,
         })
         setSaved(true)
+        dispatchWatchlistUpdated()
       }
     } else {
-      try {
-        localStorage.setItem('7media_catalogs', JSON.stringify(nextList))
-      } catch {}
+      if (!saved && !inThisFolder) {
+        try {
+          const local = localStorage.getItem('7media_watchlist')
+          const list = local ? JSON.parse(local) : []
+          if (!list.some((i: any) => (i.tmdbId || i.id) === item.id)) {
+            list.unshift({
+              tmdbId: item.id,
+              mediaType: item.type,
+              title: item.title,
+              posterPath: item.posterPath,
+              rating: item.voteAverage ? item.voteAverage.toFixed(1) : null,
+            })
+            localStorage.setItem('7media_watchlist', JSON.stringify(list))
+          }
+        } catch {}
+        setSaved(true)
+        dispatchWatchlistUpdated()
+      }
     }
   }
 
-  // Remove completely from all folders
+  // Remove completely from all folders and main watchlist
   const handleRemoveFromAll = async (e: React.MouseEvent) => {
     e.stopPropagation()
     startTransition(async () => {
       if (session?.user) {
         await removeFromAllCatalogs(item.id, item.type)
+      } else {
+        try {
+          const local = localStorage.getItem('7media_watchlist')
+          if (local) {
+            const list = JSON.parse(local).filter((i: any) => (i.tmdbId || i.id) !== item.id)
+            localStorage.setItem('7media_watchlist', JSON.stringify(list))
+          }
+        } catch {}
       }
+
       setSaved(false)
       const nextList = catalogs.map((c) => ({
         ...c,
         itemIds: (c.itemIds || []).filter((id) => id !== item.id),
       }))
       setCatalogs(nextList)
-      try {
-        localStorage.setItem('7media_catalogs', JSON.stringify(nextList))
-      } catch {}
+      dispatchCatalogsUpdated(nextList)
+      dispatchWatchlistUpdated()
       setShowFolderMenu(false)
     })
   }
 
+  // Create new folder inline
   const handleCreateNewFolder = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newFolderName.trim()) return
@@ -227,6 +316,7 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
     setCatalogs(nextList)
     setNewFolderName('')
     setIsCreatingNew(false)
+    dispatchCatalogsUpdated(nextList)
 
     if (session?.user) {
       await saveUserCatalog(newCat)
@@ -239,16 +329,31 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
           rating: item.voteAverage ? item.voteAverage.toFixed(1) : null,
         })
         setSaved(true)
+        dispatchWatchlistUpdated()
       }
     } else {
-      try {
-        localStorage.setItem('7media_catalogs', JSON.stringify(nextList))
-      } catch {}
+      if (!saved) {
+        try {
+          const local = localStorage.getItem('7media_watchlist')
+          const list = local ? JSON.parse(local) : []
+          if (!list.some((i: any) => (i.tmdbId || i.id) === item.id)) {
+            list.unshift({
+              tmdbId: item.id,
+              mediaType: item.type,
+              title: item.title,
+              posterPath: item.posterPath,
+              rating: item.voteAverage ? item.voteAverage.toFixed(1) : null,
+            })
+            localStorage.setItem('7media_watchlist', JSON.stringify(list))
+          }
+        } catch {}
+        setSaved(true)
+        dispatchWatchlistUpdated()
+      }
     }
   }
 
   const Icon = saved ? BookmarkCheck : Bookmark
-
   const isSavedInAny = saved || (Array.isArray(catalogs) && catalogs.some((c) => c.itemIds?.includes(item.id)))
 
   if (compact) {
@@ -258,7 +363,7 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
         onClick={handleQuickToggle}
         disabled={isPending}
         className={`flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all disabled:opacity-50 touch-manipulation active:scale-90 select-none ${
-          saved
+          isSavedInAny
             ? 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.4)]'
             : 'bg-black/60 text-white hover:bg-emerald-500 hover:text-black'
         }`}
@@ -276,7 +381,7 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
         type="button"
         onClick={handleQuickToggle}
         disabled={isPending}
-        className={`flex items-center gap-2.5 rounded-l-2xl border px-5 py-3 font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 touch-manipulation active:scale-95 select-none ${
+        className={`flex items-center gap-2.5 rounded-l-2xl border px-5 py-3 font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 touch-manipulation active:scale-95 select-none cursor-pointer ${
           isSavedInAny
             ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
             : 'border-white/15 bg-zinc-900/90 text-white hover:border-emerald-500/50 hover:bg-zinc-800'
@@ -290,81 +395,93 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
       <button
         type="button"
         onClick={() => setShowFolderMenu((prev) => !prev)}
-        className={`flex items-center justify-center border-y border-r rounded-r-2xl px-3.5 py-3 text-xs transition-all ${
+        className={`flex items-center justify-center border-y border-r rounded-r-2xl px-3.5 py-3 text-xs transition-all cursor-pointer ${
           isSavedInAny
             ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
             : 'border-white/15 bg-zinc-900/90 text-zinc-400 hover:text-white hover:bg-zinc-800'
         }`}
-        title="Manage folders (Add, Remove, or Create New)"
+        title="Open folder list"
       >
-        <ChevronDown size={15} className={showFolderMenu ? 'rotate-180 transition-transform' : 'transition-transform'} />
+        <ChevronDown size={15} className={showFolderMenu ? 'rotate-180 transition-transform duration-200' : 'transition-transform duration-200'} />
       </button>
 
-      {/* Folder Management Dropdown Modal */}
+      {/* CLEAN, FULLY EXPANDED FOLDER LIST DROPDOWN (POR POR LIKHA THAKBE) */}
       {showFolderMenu && (
         <div
-          className="absolute left-0 top-full z-50 mt-2 w-80 rounded-3xl border border-white/15 bg-zinc-950/98 p-3.5 shadow-2xl shadow-black/90 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-0 top-full z-[9999] mt-2.5 w-80 sm:w-96 rounded-3xl border border-white/20 bg-zinc-950/98 p-4 shadow-2xl shadow-black/95 backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-150"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="px-2 py-1 mb-2.5 border-b border-white/10 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
-                Save &amp; Organize Folders
+          <div className="px-1 pb-3 mb-2.5 border-b border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <p className="text-xs font-black uppercase tracking-wider text-white">
+                Choose Folder / List
               </p>
-              <p className="text-[10px] text-zinc-400">Add or remove from specific catalogs</p>
             </div>
-            <span className="text-[10px] font-bold text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded-md border border-white/5">
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
               {catalogs.length} Folders
             </span>
           </div>
 
-          {/* All Folders List with Independent Add / Remove Controls */}
-          <div className="max-h-60 overflow-y-auto scrollbar-hide space-y-1.5 pr-1">
+          {/* ALL FOLDERS LISTED SEQUENTIALLY (POR POR - NO INNER SCROLL) */}
+          <div className="space-y-1.5">
             {catalogs.map((cat) => {
               const inThisFolder = cat.id === 'watchlist' ? saved : cat.itemIds?.includes(item.id)
               const IconComp = ICON_MAP[cat.thumbnail || 'Folder'] || Folder
+              const count = cat.id === 'watchlist' ? (saved ? 1 : 0) : (cat.itemIds?.length || 0)
 
               return (
                 <div
                   key={cat.id}
                   onClick={(e) => handleToggleFolder(cat, e)}
-                  className={`group flex items-center justify-between rounded-2xl p-2.5 text-xs font-semibold cursor-pointer transition-all ${
+                  className={`group flex items-center justify-between rounded-xl p-2.5 text-xs font-semibold cursor-pointer transition-all border ${
                     inThisFolder
-                      ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-sm'
-                      : 'bg-zinc-900/60 border border-white/5 text-zinc-300 hover:bg-zinc-900 hover:text-white'
+                      ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 shadow-sm'
+                      : 'bg-zinc-900/80 border-white/5 text-zinc-300 hover:bg-zinc-900 hover:border-white/20 hover:text-white'
                   }`}
                 >
+                  {/* Left: Icon & Folder Name */}
                   <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                    <span className={`p-1.5 rounded-xl ${inThisFolder ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>
-                      <IconComp size={14} />
+                    <span
+                      className={`p-1.5 rounded-lg border shrink-0 ${
+                        inThisFolder
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                          : 'bg-zinc-800 text-zinc-400 border-white/5 group-hover:text-white'
+                      }`}
+                    >
+                      <IconComp size={15} />
                     </span>
                     <div className="truncate">
-                      <p className="text-xs font-bold truncate text-white">{cat.name}</p>
+                      <p className="text-xs font-bold truncate text-white group-hover:text-emerald-400 transition-colors">
+                        {cat.name}
+                      </p>
                       <p className="text-[10px] text-zinc-400">
-                        {cat.id === 'watchlist' ? (saved ? 'Main Watchlist' : 'Default') : `${cat.itemIds?.length || 0} saved`}
+                        {cat.id === 'watchlist' ? 'Default Collection' : `${count} titles`}
                       </p>
                     </div>
                   </div>
 
-                  {/* Action Pill: Saved / Remove vs Add */}
+                  {/* Right: Direct Action Button */}
                   <div className="shrink-0">
                     {inThisFolder ? (
                       <button
                         type="button"
                         onClick={(e) => handleToggleFolder(cat, e)}
-                        className="flex items-center gap-1 rounded-xl bg-rose-500/20 hover:bg-rose-500/40 border border-rose-500/30 px-2.5 py-1 text-[10px] font-bold text-rose-300 transition-colors"
-                        title="Remove from this folder"
+                        className="flex items-center gap-1 rounded-lg bg-emerald-500/25 hover:bg-rose-500/25 border border-emerald-500/50 hover:border-rose-500/50 px-2.5 py-1 text-[10px] font-bold text-emerald-300 hover:text-rose-300 transition-all cursor-pointer"
+                        title="Click to remove from this folder"
                       >
-                        <X size={12} />
-                        <span>Remove</span>
+                        <Check size={12} className="group-hover:hidden" />
+                        <X size={12} className="hidden group-hover:inline" />
+                        <span className="group-hover:hidden">Added</span>
+                        <span className="hidden group-hover:inline">Remove</span>
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={(e) => handleToggleFolder(cat, e)}
-                        className="flex items-center gap-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 px-2.5 py-1 text-[10px] font-bold text-emerald-400 transition-colors"
-                        title="Add to this folder"
+                        className="flex items-center gap-1 rounded-lg bg-zinc-800 hover:bg-emerald-500 hover:text-black border border-white/10 px-2.5 py-1 text-[10px] font-bold text-zinc-300 transition-all cursor-pointer"
+                        title="Click to add to this folder"
                       >
                         <Plus size={12} />
                         <span>Add</span>
@@ -376,37 +493,37 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
             })}
           </div>
 
-          {/* Inline "+ Create New Folder" Form */}
+          {/* Footer Controls: Create New Folder & Clean Actions */}
           <div className="mt-3 pt-2.5 border-t border-white/10 space-y-2">
             {!isCreatingNew ? (
               <button
                 type="button"
                 onClick={() => setIsCreatingNew(true)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-zinc-900 border border-white/10 hover:border-emerald-500/40 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-zinc-800 transition active:scale-95 shadow-sm"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 border border-white/10 hover:border-emerald-500/40 px-3 py-2 text-xs font-bold text-emerald-400 hover:bg-zinc-850 transition active:scale-95 shadow-sm cursor-pointer"
               >
-                <Plus size={14} />
+                <FolderPlus size={14} />
                 <span>Create New Folder</span>
               </button>
             ) : (
-              <form onSubmit={handleCreateNewFolder} className="space-y-2 rounded-2xl border border-emerald-500/40 bg-zinc-900/90 p-2.5 animate-in fade-in duration-150">
+              <form onSubmit={handleCreateNewFolder} className="space-y-2 rounded-xl border border-emerald-500/40 bg-zinc-900/95 p-2.5 animate-in fade-in duration-150 shadow-xl">
                 <input
                   type="text"
                   autoFocus
                   required
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="Folder name (e.g. Weekend Anime)..."
-                  className="w-full rounded-xl border border-emerald-500/50 bg-zinc-950 px-3 py-2 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  placeholder="Folder name (e.g. Anime Favorites)..."
+                  className="w-full rounded-lg border border-emerald-500/50 bg-zinc-950 px-3 py-1.5 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
 
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center justify-between gap-1 pt-1">
                   <div className="flex items-center gap-1.5">
-                    {(['purple', 'emerald', 'rose', 'amber', 'cyan', 'pink'] as const).map((col) => (
+                    {(['emerald', 'purple', 'rose', 'amber', 'cyan', 'pink'] as const).map((col) => (
                       <button
                         key={col}
                         type="button"
                         onClick={() => setNewFolderColor(col)}
-                        className={`w-4 h-4 rounded-full transition-transform ${
+                        className={`w-3.5 h-3.5 rounded-full transition-transform cursor-pointer ${
                           col === 'purple' ? 'bg-purple-500' :
                           col === 'emerald' ? 'bg-emerald-500' :
                           col === 'rose' ? 'bg-rose-500' :
@@ -421,29 +538,29 @@ export function WatchlistButton({ item, compact = false }: WatchlistButtonProps)
                     <button
                       type="button"
                       onClick={() => setIsCreatingNew(false)}
-                      className="px-2 py-1 text-[10px] font-bold text-zinc-400 hover:text-white"
+                      className="px-2 py-1 text-[10px] font-bold text-zinc-400 hover:text-white cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-black shadow-sm"
+                      className="rounded-lg bg-emerald-500 hover:bg-emerald-400 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-black shadow-sm cursor-pointer"
                     >
-                      Create &amp; Save
+                      Save &amp; Add
                     </button>
                   </div>
                 </div>
               </form>
             )}
 
-            {/* 1-Click Remove From All Watchlists / Folders Button */}
+            {/* Remove from All */}
             {isSavedInAny && (
               <button
                 type="button"
                 onClick={handleRemoveFromAll}
-                className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-3 py-2 text-xs font-bold text-rose-400 transition active:scale-95"
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-3 py-1.5 text-[11px] font-bold text-rose-400 transition active:scale-95 cursor-pointer"
               >
-                <Trash2 size={13} />
+                <Trash2 size={12} />
                 <span>Remove from Watchlist &amp; All Folders</span>
               </button>
             )}

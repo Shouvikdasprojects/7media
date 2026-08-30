@@ -8,7 +8,7 @@ import {
 } from './types'
 
 const BASE_URL = 'https://api.themoviedb.org/3'
-const API_KEY = process.env.TMDB_API_KEY || 'fe69221eb4a5511fd9ea5889f9e24ae3'
+const API_KEY = process.env.TMDB_API_KEY || ''
 
 // In-memory response cache on server (5 min TTL)
 const responseCache = new Map<string, { data: any; expires: number }>()
@@ -130,7 +130,9 @@ async function fetchTMDB<T>(
   url.searchParams.append('api_key', API_KEY)
 
   Object.entries(params).forEach(([key, value]) => {
-    url.searchParams.append(key, String(value))
+    if (value !== undefined && value !== null && value !== '' && value !== 'undefined') {
+      url.searchParams.append(key, String(value))
+    }
   })
 
   const cacheKey = url.toString()
@@ -191,14 +193,14 @@ export const tmdbClient = {
   // Movie Details
   getMovieDetails: async (movieId: number) => {
     return fetchTMDB<TMDBMovieDetail>(`/movie/${movieId}`, {
-      append_to_response: 'credits,videos,similar',
+      append_to_response: 'credits,videos,similar,recommendations',
     })
   },
 
   // Show Details
   getShowDetails: async (showId: number) => {
     return fetchTMDB<TMDBShowDetail>(`/tv/${showId}`, {
-      append_to_response: 'credits,videos,similar',
+      append_to_response: 'credits,videos,similar,recommendations',
     })
   },
 

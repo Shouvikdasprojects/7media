@@ -15,13 +15,22 @@ const swrOptions = {
   errorRetryCount: 2,
 }
 
-const fetcher = (url: string) =>
-  fetch(url).then((res) => {
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`)
+const fetcher = async (url: string) => {
+  try {
+    let res = await fetch(url)
+    if (res.status === 429) {
+      // Automatic backoff retry on burst browsing
+      await new Promise((r) => setTimeout(r, 600))
+      res = await fetch(url)
     }
-    return res.json()
-  })
+    if (!res.ok) {
+      return { results: [], page: 1, total_pages: 1, total_results: 0 }
+    }
+    return await res.json()
+  } catch {
+    return { results: [], page: 1, total_pages: 1, total_results: 0 }
+  }
+}
 
 export function useTrendingMovies(timeWindow: 'day' | 'week' = 'week', page = 1) {
   const { data, error, isLoading } = useSWR<TMDBPaginatedResponse<TMDBMovie>>(

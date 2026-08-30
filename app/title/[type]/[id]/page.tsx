@@ -10,9 +10,11 @@ import { ShareModal } from '@/components/share-modal'
 import { TrailerModal } from '@/components/trailer-modal'
 import { UserReviewModal, type UserReview } from '@/components/user-review-modal'
 import { SoundtrackSection } from '@/components/soundtrack-section'
-import { useMovieDetails, useShowDetails, useWatchProviders } from '@/lib/tmdb/hooks'
+import { TitleDetailsSkeleton } from '@/components/title-skeleton'
+import { useMovieDetails, useShowDetails } from '@/lib/tmdb/hooks'
 import { useSession } from '@/lib/auth-client'
 import { getUserReactions, toggleUserReaction } from '@/app/actions/catalogs'
+import { addToRecentlyViewed } from '@/lib/recently-viewed'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -35,7 +37,13 @@ import {
   Globe2,
   Award,
   Video,
-  Info
+  Sparkles,
+  TrendingUp,
+  Radio,
+  CheckCircle2,
+  Flame,
+  Layers,
+  Disc3
 } from 'lucide-react'
 
 export default function TitlePage({
@@ -58,11 +66,11 @@ export default function TitlePage({
   const [isLiked, setIsLiked] = useState(false)
   const [isDisliked, setIsDisliked] = useState(false)
 
-  const { data: movieData } = useMovieDetails(isMovie ? titleId : null)
-  const { data: showData } = useShowDetails(isMovie ? null : titleId)
-  const { data: providersData } = useWatchProviders(type, 'US')
+  const { data: movieData, isLoading: isMovieLoading } = useMovieDetails(isMovie ? titleId : null)
+  const { data: showData, isLoading: isShowLoading } = useShowDetails(isMovie ? null : titleId)
 
   const data: any = isMovie ? movieData : showData
+  const isLoading = isMovie ? isMovieLoading : isShowLoading
 
   useEffect(() => {
     try {
@@ -89,6 +97,21 @@ export default function TitlePage({
       } catch {}
     }
   }, [titleId, session?.user])
+
+  useEffect(() => {
+    if (data && titleId) {
+      addToRecentlyViewed({
+        id: titleId,
+        type,
+        title: isMovie ? data.title : data.name,
+        poster_path: data.poster_path,
+        backdrop_path: data.backdrop_path,
+        vote_average: data.vote_average,
+        release_date: isMovie ? data.release_date : data.first_air_date,
+        genres: data.genres?.map((g: any) => g.name),
+      })
+    }
+  }, [data, titleId, type, isMovie])
 
   const handleToggleReaction = async (reaction: 'watched' | 'liked' | 'disliked') => {
     if (reaction === 'watched') {
@@ -132,12 +155,40 @@ export default function TitlePage({
     }
   }
 
-  if (!data) {
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-screen flex-col bg-background text-foreground">
         <Navbar />
-        <main className="flex flex-1 items-center justify-center">
-          <p className="text-muted-foreground">Loading title information...</p>
+        <main className="flex-1">
+          <TitleDetailsSkeleton />
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (!data || (!data.title && !data.name)) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background text-foreground">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center px-4 py-24">
+          <div className="max-w-md w-full rounded-3xl border border-white/10 bg-card p-8 text-center shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+              <Film size={28} />
+            </div>
+            <h1 className="text-2xl font-black font-display uppercase tracking-tight text-foreground mb-2">
+              Title Not Found
+            </h1>
+            <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
+              We couldn&apos;t load details for this {isMovie ? 'movie' : 'series'}. It may have been removed or the ID is invalid.
+            </p>
+            <Link
+              href={isMovie ? '/movies' : '/series'}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-xs font-bold uppercase tracking-wider text-primary-foreground hover:bg-primary/90 transition shadow-md active:scale-95"
+            >
+              Browse {isMovie ? 'Movies' : 'Series'}
+            </Link>
+          </div>
         </main>
         <Footer />
       </div>
@@ -148,20 +199,26 @@ export default function TitlePage({
     ? `https://image.tmdb.org/t/p/original${data.backdrop_path}`
     : null
   const posterUrl = data.poster_path
-    ? `https://image.tmdb.org/t/p/w342${data.poster_path}`
+    ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
     : null
   const title = isMovie ? data.title : data.name
   const year = isMovie
     ? data.release_date?.slice(0, 4)
     : data.first_air_date?.slice(0, 4)
-  const recommendations = data.recommendations?.results || []
+  const recommendations =
+    data.recommendations?.results && data.recommendations.results.length > 0
+      ? data.recommendations.results
+      : data.similar?.results && data.similar.results.length > 0
+      ? data.similar.results
+      : []
 
   // Extract Trailer key
-  const trailerVideo = data.videos?.results?.find(
-    (v: any) =>
-      v.site === 'YouTube' &&
-      (v.type === 'Trailer' || v.type === 'Teaser' || v.official)
-  ) || data.videos?.results?.[0]
+  const trailerVideo =
+    data.videos?.results?.find(
+      (v: any) =>
+        v.site === 'YouTube' &&
+        (v.type === 'Trailer' || v.type === 'Teaser' || v.official)
+    ) || data.videos?.results?.[0]
   const trailerKey = trailerVideo?.key || null
 
   // Extract Directors / Creators
@@ -171,330 +228,370 @@ export default function TitlePage({
   // Format currency
   const formatCurrency = (val?: number) => {
     if (!val || val === 0) return null
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    }).format(val)
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-primary selection:text-white">
       <Navbar />
 
       <main className="flex-1">
-        {/* Backdrop hero */}
-        <div className="relative min-h-[78vh] overflow-hidden">
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-gradient-to-b from-background/80 to-transparent" />
-          {backdropUrl && (
-            <Image
-              src={backdropUrl}
-              alt=""
-              fill
-              priority
-              className="object-cover opacity-60"
-              aria-hidden="true"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/75 to-background/30" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/60 to-transparent" />
-
-          <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-8 px-4 pb-12 pt-32 md:flex-row md:items-end md:px-8">
-            {/* Poster */}
-            {posterUrl && (
-              <div className="hidden w-56 flex-shrink-0 overflow-hidden rounded-2xl shadow-2xl ring-1 ring-border/80 md:block">
-                <Image
-                  src={posterUrl}
-                  alt={`${title} poster`}
-                  width={224}
-                  height={336}
-                  className="h-auto w-full object-cover"
-                />
-              </div>
+        {/* ========================================================================= */}
+        {/* 1. FUTURISTIC AMBIENT HERO SECTION */}
+        {/* ========================================================================= */}
+        <section className="relative min-h-[85vh] flex items-end">
+          {/* Ambient Cyber Grid & Glow Lights */}
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+            {backdropUrl && (
+              <Image
+                src={backdropUrl}
+                alt=""
+                fill
+                priority
+                className="object-cover object-top opacity-40 scale-105 transition-transform duration-1000 ease-out"
+                aria-hidden="true"
+              />
             )}
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/30" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent w-full md:w-3/4" />
+            <div className="absolute -top-32 -left-32 w-96 h-96 bg-primary/20 rounded-full blur-[140px] pointer-events-none" />
+            <div className="absolute top-1/3 right-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none" />
+          </div>
 
-            {/* Info */}
-            <div className="flex flex-1 flex-col gap-4">
-              <h1 className="text-balance text-3xl font-black font-display uppercase tracking-tight text-foreground md:text-5xl text-glow">
-                {title}
-              </h1>
+          {/* Hero Content Box */}
+          <div className="relative z-10 mx-auto w-full max-w-[1880px] px-4 md:px-8 lg:px-12 pt-36 pb-14">
+            <div className="flex flex-col md:flex-row items-center md:items-end gap-8 lg:gap-12">
+              {/* Cyber Poster with Hologram Ring */}
+              {posterUrl && (
+                <div className="relative group shrink-0 w-48 sm:w-60 md:w-68 lg:w-76 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.9)] ring-1 ring-white/20 transition-all duration-500 hover:scale-[1.02] hover:ring-primary/60 hover:shadow-[0_0_50px_rgba(229,9,20,0.35)]">
+                  <Image
+                    src={posterUrl}
+                    alt={`${title} poster`}
+                    width={320}
+                    height={480}
+                    className="h-auto w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold">
-                <span className="flex items-center gap-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 px-3 py-1 text-amber-400">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />
-                  <span className="font-bold">{data.vote_average?.toFixed(1)}</span>
-                  <span className="text-xs text-amber-400/70">/ 10</span>
-                </span>
-                {year && (
-                  <span className="flex items-center gap-1.5 text-foreground">
-                    <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    {year}
-                  </span>
-                )}
-                {isMovie && data.runtime ? (
-                  <span className="flex items-center gap-1.5 text-foreground">
-                    <Clock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    {Math.floor(data.runtime / 60)}h {data.runtime % 60}m
-                  </span>
-                ) : null}
-                {!isMovie && data.number_of_seasons ? (
-                  <span className="flex items-center gap-1.5 text-foreground">
-                    <Tv className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                    {data.number_of_seasons} Season{data.number_of_seasons > 1 ? 's' : ''}
-                  </span>
-                ) : null}
-                {data.status && (
-                  <span className="rounded-xl bg-white/10 border border-white/15 px-3 py-1 text-xs uppercase font-bold text-zinc-300">
-                    {data.status}
-                  </span>
-                )}
-              </div>
+                  {/* 4K UHD Cyber Badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/20 text-[10px] font-black tracking-widest text-white shadow-lg">
+                    <Sparkles size={11} className="text-primary" />
+                    <span>4K ULTRA HD</span>
+                  </div>
 
-              {/* Genres with Direct Hub Links */}
-              {data.genres && data.genres.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {data.genres.map((g: { id: number; name: string }) => (
-                    <Link
-                      key={g.id}
-                      href={isMovie ? `/movies/genre/${g.id}` : `/series/genre/${g.id}`}
-                      className="rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-1 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground hover:scale-105 transition-all shadow-sm active:scale-95"
-                    >
-                      {g.name}
-                    </Link>
-                  ))}
+                  {/* Dolby Atmos / 5.1 Badge */}
+                  <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/20 text-[10px] font-black tracking-widest text-cyan-300 shadow-lg">
+                    DOLBY ATMOS
+                  </div>
                 </div>
               )}
 
-              <p className="max-w-2xl text-pretty text-sm md:text-base leading-relaxed text-muted-foreground">
-                {data.overview || 'Explore the story, cast, seasons, and more.'}
-              </p>
+              {/* Title & Metadata HUD */}
+              <div className="flex flex-1 flex-col gap-4 text-center md:text-left">
+                {/* Format Tag & Score Pill */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs font-black uppercase tracking-wider text-primary shadow-[0_0_15px_rgba(229,9,20,0.25)]">
+                    {isMovie ? <Film size={12} /> : <Tv size={12} />}
+                    <span>{isMovie ? 'Feature Movie' : 'Television Series'}</span>
+                  </span>
 
-              {data.tagline && (
-                <p className="border-l-2 border-primary pl-3 text-xs md:text-sm italic text-foreground/80">
-                  &quot;{data.tagline}&quot;
-                </p>
-              )}
+                  {data.vote_average > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-black text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                      <Star size={13} className="fill-amber-400" />
+                      <span>{data.vote_average.toFixed(1)} / 10</span>
+                      <span className="text-[10px] text-amber-300/60 font-mono font-normal">
+                        ({data.vote_count?.toLocaleString()} votes)
+                      </span>
+                    </span>
+                  )}
 
-              {/* Actions Row */}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <Link
-                  href={`/watch/${type}/${titleId}`}
-                  className="flex items-center gap-2 rounded-2xl bg-accent px-6 py-3 font-black uppercase text-xs tracking-wider text-accent-foreground transition-all hover:bg-accent/90 shadow-lg shadow-accent/25 active:scale-95"
-                >
-                  <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-                  Watch Player
-                </Link>
+                  {year && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+                      <Calendar size={12} className="text-zinc-400" />
+                      <span>{year}</span>
+                    </span>
+                  )}
 
-                {/* Trailer Button */}
-                {trailerKey && (
-                  <button
-                    type="button"
-                    onClick={() => setTrailerModalOpen(true)}
-                    className="flex items-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 px-5 py-3 font-black uppercase text-xs tracking-wider text-primary transition-all hover:bg-primary hover:text-primary-foreground active:scale-95 shadow-md"
-                  >
-                    <Video size={16} />
-                    Trailer
-                  </button>
+                  {isMovie && data.runtime ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+                      <Clock size={12} className="text-zinc-400" />
+                      <span>
+                        {Math.floor(data.runtime / 60)}h {data.runtime % 60}m
+                      </span>
+                    </span>
+                  ) : null}
+
+                  {!isMovie && data.number_of_seasons ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+                      <Tv size={12} className="text-zinc-400" />
+                      <span>
+                        {data.number_of_seasons} Season{data.number_of_seasons > 1 ? 's' : ''}
+                      </span>
+                    </span>
+                  ) : null}
+
+                  {data.status && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      <span>{data.status}</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Main Cyber Title */}
+                <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-display uppercase tracking-tight text-white drop-shadow-[0_10px_35px_rgba(0,0,0,0.8)] leading-[1.08]">
+                  {title}
+                </h1>
+
+                {/* Tagline */}
+                {data.tagline && (
+                  <p className="text-xs sm:text-sm font-medium italic text-zinc-300/90 tracking-wide border-l-2 border-primary pl-3">
+                    &quot;{data.tagline}&quot;
+                  </p>
                 )}
 
-                {/* Watch Party Virtual Cinema Launcher */}
-                <Link
-                  href={`/party/7M-${titleId}`}
-                  className="flex items-center gap-2 rounded-2xl border border-purple-500/40 bg-purple-500/10 px-5 py-3 font-bold text-xs uppercase tracking-wider text-purple-300 transition-all hover:bg-purple-500/25 active:scale-95 shadow-md"
-                >
-                  <Users size={16} />
-                  Watch Party
-                </Link>
+                {/* Genres Pills */}
+                {data.genres && data.genres.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
+                    {data.genres.map((g: { id: number; name: string }) => (
+                      <Link
+                        key={g.id}
+                        href={isMovie ? `/movies/genre/${g.id}` : `/series/genre/${g.id}`}
+                        className="rounded-xl border border-white/15 bg-zinc-900/80 hover:border-primary/60 hover:bg-primary/20 px-3.5 py-1 text-xs font-bold text-zinc-300 hover:text-white transition-all backdrop-blur-md active:scale-95 shadow-sm"
+                      >
+                        {g.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
 
-                {/* Upgraded Watchlist Button */}
-                <WatchlistButton
-                  item={{
-                    id: titleId,
-                    type,
-                    title,
-                    posterPath: data.poster_path,
-                    voteAverage: data.vote_average,
-                  }}
-                />
+                {/* Overview Synopsis */}
+                <p className="max-w-3xl text-xs sm:text-sm md:text-base leading-relaxed text-zinc-300 line-clamp-4 mt-1">
+                  {data.overview || 'Experience the official cinematic storyline, comprehensive cast guide, full episodes, and soundtracks.'}
+                </p>
 
-                {/* Watched Button */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleReaction('watched')}
-                  className={`flex items-center gap-1.5 rounded-2xl border px-4 py-3 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 ${
-                    isWatched
-                      ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
-                      : 'border-white/15 bg-zinc-900/90 text-zinc-400 hover:text-white hover:bg-zinc-800'
-                  }`}
-                  title={isWatched ? 'Marked as Watched' : 'Mark as Watched'}
-                >
-                  <Eye size={15} />
-                  <span>{isWatched ? 'Watched' : 'Watch'}</span>
-                </button>
+                {/* ========================================================================= */}
+                {/* ACTION BUTTONS HUD */}
+                {/* ========================================================================= */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-3">
+                  {/* Primary Watch / Stream Button */}
+                  <Link
+                    href={`/watch/${type}/${titleId}`}
+                    className="flex items-center gap-2.5 rounded-2xl bg-primary hover:bg-primary/90 px-7 py-3.5 font-black uppercase text-xs sm:text-sm tracking-wider text-primary-foreground transition-all duration-300 shadow-[0_0_30px_rgba(229,9,20,0.4)] hover:shadow-[0_0_40px_rgba(229,9,20,0.6)] active:scale-95 cursor-pointer"
+                  >
+                    <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+                    <span>Watch Player</span>
+                  </Link>
 
-                {/* Like Button */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleReaction('liked')}
-                  className={`flex items-center gap-1.5 rounded-2xl border px-4 py-3 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 ${
-                    isLiked
-                      ? 'border-cyan-500 bg-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
-                      : 'border-white/15 bg-zinc-900/90 text-zinc-400 hover:text-white hover:bg-zinc-800'
-                  }`}
-                  title="Like this title"
-                >
-                  <ThumbsUp size={15} />
-                  <span>Like</span>
-                </button>
+                  {/* Trailer Modal Button */}
+                  {trailerKey && (
+                    <button
+                      type="button"
+                      onClick={() => setTrailerModalOpen(true)}
+                      className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 hover:bg-white/20 px-5 py-3.5 font-bold uppercase text-xs sm:text-sm tracking-wider text-white transition-all backdrop-blur-xl active:scale-95 shadow-md cursor-pointer"
+                    >
+                      <Video size={16} className="text-primary" />
+                      <span>Trailer</span>
+                    </button>
+                  )}
 
-                {/* Dislike Button */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleReaction('disliked')}
-                  className={`flex items-center gap-1.5 rounded-2xl border px-4 py-3 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 ${
-                    isDisliked
-                      ? 'border-rose-500 bg-rose-500/20 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
-                      : 'border-white/15 bg-zinc-900/90 text-zinc-400 hover:text-white hover:bg-zinc-800'
-                  }`}
-                  title="Dislike this title"
-                >
-                  <ThumbsDown size={15} />
-                  <span>Dislike</span>
-                </button>
+                  {/* Watch Party Virtual Cinema */}
+                  <Link
+                    href={`/party/7M-${titleId}`}
+                    className="flex items-center gap-2 rounded-2xl border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/30 px-5 py-3.5 font-bold uppercase text-xs sm:text-sm tracking-wider text-purple-300 transition-all backdrop-blur-xl active:scale-95 shadow-[0_0_20px_rgba(168,85,247,0.2)] cursor-pointer"
+                  >
+                    <Users size={16} />
+                    <span>Watch Party</span>
+                  </Link>
 
-                {/* Share Button */}
-                <button
-                  type="button"
-                  onClick={() => setShareModalOpen(true)}
-                  className="flex items-center gap-2 rounded-2xl border border-white/15 bg-zinc-900/90 px-5 py-3 font-bold text-xs uppercase tracking-wider text-foreground transition-all hover:bg-zinc-800 hover:border-white/30 active:scale-95"
-                >
-                  <Share2 className="h-4 w-4" aria-hidden="true" />
-                  Share
-                </button>
+                  {/* Watchlist Toggle */}
+                  <WatchlistButton
+                    item={{
+                      id: titleId,
+                      type,
+                      title,
+                      posterPath: data.poster_path,
+                      voteAverage: data.vote_average,
+                    }}
+                  />
 
-                {/* Rate & Review Button */}
-                <button
-                  type="button"
-                  onClick={() => setReviewModalOpen(true)}
-                  className="flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-3 font-bold text-xs uppercase tracking-wider text-amber-400 transition-all hover:bg-amber-500/20 active:scale-95"
-                >
-                  <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
-                  Rate
-                </button>
+                  {/* Watched Action */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleReaction('watched')}
+                    className={`flex items-center gap-1.5 rounded-2xl border px-4 py-3.5 font-bold text-xs uppercase tracking-wider transition-all backdrop-blur-xl active:scale-95 cursor-pointer ${
+                      isWatched
+                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+                        : 'border-white/15 bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    }`}
+                    title={isWatched ? 'Marked as Watched' : 'Mark as Watched'}
+                  >
+                    <Eye size={15} />
+                    <span>{isWatched ? 'Watched' : 'Watch'}</span>
+                  </button>
+
+                  {/* Like Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleReaction('liked')}
+                    className={`flex items-center gap-1.5 rounded-2xl border px-4 py-3.5 font-bold text-xs uppercase tracking-wider transition-all backdrop-blur-xl active:scale-95 cursor-pointer ${
+                      isLiked
+                        ? 'border-cyan-500 bg-cyan-500/20 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.3)]'
+                        : 'border-white/15 bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    }`}
+                    title="Like this title"
+                  >
+                    <ThumbsUp size={15} />
+                    <span>Like</span>
+                  </button>
+
+                  {/* Dislike Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleReaction('disliked')}
+                    className={`flex items-center gap-1.5 rounded-2xl border px-4 py-3.5 font-bold text-xs uppercase tracking-wider transition-all backdrop-blur-xl active:scale-95 cursor-pointer ${
+                      isDisliked
+                        ? 'border-rose-500 bg-rose-500/20 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]'
+                        : 'border-white/15 bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    }`}
+                    title="Dislike this title"
+                  >
+                    <ThumbsDown size={15} />
+                  </button>
+
+                  {/* Share Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShareModalOpen(true)}
+                    className="flex items-center gap-2 rounded-2xl border border-white/15 bg-zinc-900/80 hover:bg-zinc-800 px-4 py-3.5 font-bold text-xs uppercase tracking-wider text-zinc-300 hover:text-white transition-all backdrop-blur-xl active:scale-95 cursor-pointer"
+                  >
+                    <Share2 size={15} />
+                  </button>
+
+                  {/* Write Review Button */}
+                  <button
+                    type="button"
+                    onClick={() => setReviewModalOpen(true)}
+                    className="flex items-center gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/25 px-5 py-3.5 font-bold text-xs uppercase tracking-wider text-amber-400 transition-all backdrop-blur-xl active:scale-95 shadow-md cursor-pointer"
+                  >
+                    <MessageSquarePlus size={15} />
+                    <span>Review</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Quick Facts & Production Highlights Grid */}
-        <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 border-b border-border">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        {/* ========================================================================= */}
+        {/* 2. CINEPHILE HUD STATS & BOX OFFICE METRICS */}
+        {/* ========================================================================= */}
+        <section className="mx-auto max-w-[1880px] px-4 md:px-8 lg:px-12 py-8 border-b border-white/5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
             {/* Director / Creator */}
-            <div className="rounded-2xl border border-white/10 bg-card/60 p-4 backdrop-blur-md">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary mb-1">
+            <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl shadow-lg hover:border-primary/40 transition-colors">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary mb-1">
                 <Users size={14} />
                 <span>{isMovie ? 'Director' : 'Creator'}</span>
               </div>
-              <p className="text-sm font-bold text-foreground truncate">
+              <p className="text-xs sm:text-sm font-black text-white truncate">
                 {isMovie
                   ? directors.map((d: any) => d.name).join(', ') || 'N/A'
                   : createdBy.map((c: any) => c.name).join(', ') || 'Various Creators'}
               </p>
             </div>
 
-            {/* Original Language */}
-            <div className="rounded-2xl border border-white/10 bg-card/60 p-4 backdrop-blur-md">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary mb-1">
+            {/* Original Audio */}
+            <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl shadow-lg hover:border-cyan-500/40 transition-colors">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
                 <Globe2 size={14} />
-                <span>Original Audio</span>
+                <span>Audio Master</span>
               </div>
-              <p className="text-sm font-bold text-foreground uppercase">
-                {data.original_language || 'English'}
+              <p className="text-xs sm:text-sm font-black text-white uppercase">
+                {data.original_language || 'English'} (Stereo/Atmos)
               </p>
             </div>
 
             {/* Budget (if movie) */}
-            {isMovie && data.budget > 0 && (
-              <div className="rounded-2xl border border-white/10 bg-card/60 p-4 backdrop-blur-md">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1">
+            {isMovie && data.budget > 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl shadow-lg hover:border-emerald-500/40 transition-colors">
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-1">
                   <DollarSign size={14} />
-                  <span>Budget</span>
+                  <span>Production Budget</span>
                 </div>
-                <p className="text-sm font-bold text-foreground">
+                <p className="text-xs sm:text-sm font-black text-white">
                   {formatCurrency(data.budget)}
                 </p>
               </div>
-            )}
+            ) : null}
 
             {/* Box Office Revenue (if movie) */}
-            {isMovie && data.revenue > 0 && (
-              <div className="rounded-2xl border border-white/10 bg-card/60 p-4 backdrop-blur-md">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
+            {isMovie && data.revenue > 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl shadow-lg hover:border-amber-500/40 transition-colors">
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-amber-400 mb-1">
                   <Award size={14} />
-                  <span>Box Office</span>
+                  <span>Worldwide Gross</span>
                 </div>
-                <p className="text-sm font-bold text-foreground">
+                <p className="text-xs sm:text-sm font-black text-white">
                   {formatCurrency(data.revenue)}
                 </p>
               </div>
-            )}
+            ) : null}
 
-            {/* Total Episodes (if show) */}
-            {!isMovie && data.number_of_episodes && (
-              <div className="rounded-2xl border border-white/10 bg-card/60 p-4 backdrop-blur-md">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400 mb-1">
+            {/* Total Episodes (if TV) */}
+            {!isMovie && data.number_of_episodes ? (
+              <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl shadow-lg hover:border-pink-500/40 transition-colors">
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-pink-400 mb-1">
                   <Tv size={14} />
-                  <span>Total Episodes</span>
+                  <span>Episode Count</span>
                 </div>
-                <p className="text-sm font-bold text-foreground">
-                  {data.number_of_episodes} Episodes
+                <p className="text-xs sm:text-sm font-black text-white">
+                  {data.number_of_episodes} Total Episodes
                 </p>
               </div>
-            )}
+            ) : null}
 
-            {/* Studio / Production */}
+            {/* Studio / Production Company */}
             {data.production_companies && data.production_companies.length > 0 && (
-              <div className="rounded-2xl border border-white/10 bg-card/60 p-4 backdrop-blur-md">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-rose-400 mb-1">
+              <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl shadow-lg hover:border-purple-500/40 transition-colors">
+                <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-purple-400 mb-1">
                   <Building2 size={14} />
-                  <span>Studio</span>
+                  <span>Production House</span>
                 </div>
-                <p className="text-sm font-bold text-foreground truncate">
+                <p className="text-xs sm:text-sm font-black text-white truncate">
                   {data.production_companies[0]?.name}
                 </p>
               </div>
             )}
-          </div>
-        </section>
 
-        {/* Streaming Providers Notice */}
-        <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 border-b border-border">
-          <div className="rounded-3xl border border-white/10 bg-card/60 p-6 backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                <ShieldCheck size={22} />
+            {/* Status / Broadcast */}
+            <div className="rounded-2xl border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl shadow-lg hover:border-emerald-500/40 transition-colors">
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-emerald-400 mb-1">
+                <Radio size={14} />
+                <span>Stream Status</span>
               </div>
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
-                  Official Streaming Availability
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Stream &quot;{title}&quot; legally on authorized global networks like Netflix, Prime Video, Disney+, Max, or Apple TV+.
-                </p>
-              </div>
+              <p className="text-xs sm:text-sm font-black text-white truncate">
+                {data.status || 'Released / Streaming'}
+              </p>
             </div>
-            <Link
-              href={`/watch/${type}/${titleId}`}
-              className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-accent hover:underline uppercase tracking-wider"
-            >
-              <span>View Player &amp; Rights Notice</span>
-              <ExternalLink size={14} />
-            </Link>
           </div>
         </section>
 
-        {/* Official Soundtracks (OST) Section */}
+        {/* ========================================================================= */}
+        {/* 3. OFFICIAL SOUNDTRACKS (OST) SECTION */}
+        {/* ========================================================================= */}
         <SoundtrackSection mediaTitle={title} mediaType={type} />
 
-        {/* TV Episodes (if series) */}
+        {/* ========================================================================= */}
+        {/* 4. TV EPISODE SELECTOR & EPISODE GUIDE */}
+        {/* ========================================================================= */}
         {!isMovie && data.seasons && (
-          <section className="mx-auto max-w-7xl px-4 py-10 md:px-8">
+          <section className="mx-auto max-w-[1880px] px-4 md:px-8 lg:px-12 py-10">
             <EpisodeList
               showId={titleId}
               seasons={data.seasons.filter((s: { season_number: number }) => s.season_number > 0)}
@@ -502,53 +599,84 @@ export default function TitlePage({
           </section>
         )}
 
-        {/* Cast Grid */}
+        {/* ========================================================================= */}
+        {/* 5. TOP CAST & CHARACTER GALLERY */}
+        {/* ========================================================================= */}
         {data.credits?.cast && data.credits.cast.length > 0 && (
-          <section className="mx-auto max-w-7xl border-t border-border px-4 py-10 md:px-8">
-            <h2 className="mb-6 text-xl font-bold font-display uppercase tracking-tight text-foreground md:text-2xl">
-              Cast &amp; Characters
-            </h2>
-            <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
+          <section className="mx-auto max-w-[1880px] border-t border-white/5 px-4 md:px-8 lg:px-12 py-12">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-primary/15 text-primary border border-primary/25">
+                  <Users size={18} />
+                </span>
+                <div>
+                  <h2 className="text-xl md:text-2xl font-black font-display uppercase tracking-tight text-white">
+                    Starring Cast &amp; Characters
+                  </h2>
+                  <p className="text-xs text-zinc-400">Official TMDB credited performers</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {data.credits.cast
                 .slice(0, 12)
                 .map((actor: { id: number; name: string; character: string; profile_path: string | null }) => (
-                  <div key={actor.id} className="text-center group">
-                    <div className="mb-2 aspect-square overflow-hidden rounded-2xl bg-secondary ring-1 ring-border/50 group-hover:ring-primary/50 transition-all">
+                  <div
+                    key={actor.id}
+                    className="group rounded-2xl border border-white/10 bg-zinc-950/80 p-3 hover:border-primary/50 transition-all duration-300 hover:-translate-y-1 shadow-md"
+                  >
+                    <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-zinc-900 mb-2.5">
                       {actor.profile_path ? (
                         <Image
-                          src={`https://image.tmdb.org/t/p/w200${actor.profile_path}`}
+                          src={`https://image.tmdb.org/t/p/w342${actor.profile_path}`}
                           alt={actor.name}
-                          width={160}
-                          height={160}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                          fill
+                          sizes="(max-width: 640px) 140px, 200px"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-muted-foreground">
+                        <div className="flex h-full w-full items-center justify-center text-3xl font-black text-zinc-700">
                           {actor.name.charAt(0)}
                         </div>
                       )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                     </div>
-                    <p className="line-clamp-1 text-xs md:text-sm font-bold text-foreground">
+
+                    <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-primary transition-colors line-clamp-1">
                       {actor.name}
+                    </h4>
+                    <p className="text-[11px] text-zinc-400 line-clamp-1 mt-0.5">
+                      {actor.character || 'Cast Member'}
                     </p>
-                    <p className="line-clamp-1 text-[11px] text-muted-foreground">{actor.character}</p>
                   </div>
                 ))}
             </div>
           </section>
         )}
 
-        {/* Community Reviews Section */}
+        {/* ========================================================================= */}
+        {/* 6. COMMUNITY REVIEWS & RATINGS */}
+        {/* ========================================================================= */}
         {reviews.length > 0 && (
-          <section className="mx-auto max-w-7xl border-t border-border px-4 py-10 md:px-8">
+          <section className="mx-auto max-w-[1880px] border-t border-white/5 px-4 md:px-8 lg:px-12 py-12">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold font-display uppercase tracking-tight text-foreground md:text-2xl">
-                User Reviews ({reviews.length})
-              </h2>
+              <div className="flex items-center gap-2.5">
+                <span className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                  <Star size={18} />
+                </span>
+                <div>
+                  <h2 className="text-xl md:text-2xl font-black font-display uppercase tracking-tight text-white">
+                    Verified Cinephile Reviews
+                  </h2>
+                  <p className="text-xs text-zinc-400">Community impressions &amp; commentary</p>
+                </div>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setReviewModalOpen(true)}
-                className="text-xs font-bold text-amber-400 hover:underline uppercase tracking-wider"
+                className="text-xs font-bold text-amber-400 hover:text-amber-300 uppercase tracking-wider transition cursor-pointer"
               >
                 + Write a Review
               </button>
@@ -558,11 +686,11 @@ export default function TitlePage({
               {reviews.map((rev) => (
                 <div
                   key={rev.id}
-                  className="rounded-3xl border border-white/10 bg-card p-6 shadow-md"
+                  className="rounded-3xl border border-white/10 bg-zinc-950/80 p-6 shadow-xl backdrop-blur-xl"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-black flex items-center justify-center text-xs border border-amber-500/30">
                         {rev.userName.charAt(0)}
                       </div>
                       <div>
@@ -573,8 +701,8 @@ export default function TitlePage({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 text-amber-400 text-xs font-black">
-                      <Star size={13} fill="currentColor" />
+                    <div className="flex items-center gap-1 text-amber-400 text-xs font-black bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
+                      <Star size={12} className="fill-amber-400" />
                       <span>{rev.score} / 10</span>
                     </div>
                   </div>
@@ -587,7 +715,7 @@ export default function TitlePage({
                       {rev.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-full bg-zinc-800/80 px-2.5 py-0.5 text-[10px] font-semibold text-zinc-400"
+                          className="rounded-full bg-zinc-900 border border-white/10 px-2.5 py-0.5 text-[10px] font-semibold text-zinc-400"
                         >
                           #{tag}
                         </span>
@@ -600,9 +728,11 @@ export default function TitlePage({
           </section>
         )}
 
-        {/* Recommendations Carousel */}
+        {/* ========================================================================= */}
+        {/* 7. RECOMMENDATIONS & SIMILAR UNIVERSE */}
+        {/* ========================================================================= */}
         {recommendations.length > 0 && (
-          <section className="mx-auto max-w-7xl border-t border-border px-4 py-10 md:px-8">
+          <section className="mx-auto max-w-[1880px] border-t border-white/5 px-4 md:px-8 lg:px-12 py-12">
             <MovieCarousel
               title="You May Also Like"
               movies={recommendations.slice(0, 18)}

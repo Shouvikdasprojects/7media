@@ -11,6 +11,7 @@ import { RankedCarousel } from '@/components/ranked-carousel'
 import { SafetyBanner } from '@/components/safety-banner'
 import { ProvidersRow } from '@/components/providers-row'
 import { ContinueWatching } from '@/components/continue-watching'
+import { RecentlyViewedSection } from '@/components/recently-viewed-section'
 import {
   useTrendingMovies,
   usePopularMovies,
@@ -76,13 +77,15 @@ function HomePageContent() {
         {/* Hero with genre pill bar */}
         <HeroCarousel />
 
+        <ContinueWatching />
+
+        <RecentlyViewedSection />
+
         {/* Ranked 7REELS row with Popular / This Week toggle */}
         <RankedCarousel popularItems={rankedPopular} weeklyItems={rankedWeekly} />
 
         {/* Safety notice + community */}
         <SafetyBanner />
-
-        <ContinueWatching />
 
         {/* Streaming providers */}
         <ProvidersRow />

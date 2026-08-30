@@ -71,7 +71,7 @@ function MoviesContent() {
     provider: filters.provider,
     country: filters.country,
     sortBy: filters.sortBy,
-    minVotes: filters.sortBy.startsWith('vote_average') ? 200 : undefined,
+    minVotes: filters.sortBy?.startsWith('vote_average') ? 200 : undefined,
   })
 
   const { data: trendingData, isLoading: trendingLoading } = useTrendingMovies('day', page)

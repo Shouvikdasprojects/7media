@@ -72,15 +72,25 @@ export function BrowseFilterBar({ type, filters, onChange }: BrowseFilterBarProp
   const { data: genresData } = useGenres(type)
   const { data: providersData } = useWatchProviders(type, filters.country || 'US')
 
-  const genreOptions =
-    genresData?.genres.map((g) => ({ value: String(g.id), label: g.name })) || []
+  const rawGenres = Array.isArray(genresData)
+    ? genresData
+    : Array.isArray(genresData?.genres)
+    ? genresData.genres
+    : []
 
-  const providerOptions =
-    providersData?.results
-      .slice()
-      .sort((a, b) => a.display_priority - b.display_priority)
-      .slice(0, 30)
-      .map((p) => ({ value: String(p.provider_id), label: p.provider_name })) || []
+  const genreOptions = rawGenres.map((g) => ({ value: String(g.id), label: g.name }))
+
+  const rawProviders = Array.isArray(providersData)
+    ? providersData
+    : Array.isArray(providersData?.results)
+    ? providersData.results
+    : []
+
+  const providerOptions = rawProviders
+    .slice()
+    .sort((a, b) => (a.display_priority || 0) - (b.display_priority || 0))
+    .slice(0, 30)
+    .map((p) => ({ value: String(p.provider_id), label: p.provider_name }))
 
   const set = (key: keyof BrowseFilters) => (value: string) =>
     onChange({ ...filters, [key]: value })

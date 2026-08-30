@@ -110,23 +110,21 @@ export default function FAQPage() {
             ))}
           </div>
 
-          {/* Community Card */}
+          {/* Support Strip */}
           <div className="mt-12 rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/10 via-card to-card p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
             <div>
               <h3 className="text-xl font-bold text-foreground">Need more help or have suggestions?</h3>
               <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                Join our Discord community or visit the site settings to configure preferences.
+                Reach out to our dedicated support desk or visit site settings to configure preferences.
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <a
-                href="https://discord.gg"
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                href="/contact"
                 className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-lg transition hover:opacity-90 active:scale-95"
               >
-                <MessageCircle size={16} /> Discord
-              </a>
+                Contact Support
+              </Link>
               <Link
                 href="/settings"
                 className="rounded-xl border border-border bg-secondary px-5 py-2.5 text-xs font-bold text-foreground hover:bg-card transition active:scale-95"

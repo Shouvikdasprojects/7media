@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Star, Tv, Film, Clock, Radio } from 'lucide-react'
 import { AniListMedia } from '@/lib/anilist/types'
+import { addToRecentlyViewed } from '@/lib/recently-viewed'
 
 function formatCountdown(seconds: number): string {
   const days = Math.floor(seconds / 86400)
@@ -16,26 +17,46 @@ function formatCountdown(seconds: number): string {
 export function AnimeCard({ anime }: { anime: AniListMedia }) {
   const title = anime.title.english || anime.title.romaji || anime.title.native || 'Untitled Anime'
   const japaneseTitle = anime.title.native
-  const posterUrl = anime.coverImage?.extraLarge || anime.coverImage?.large || anime.coverImage?.medium || '/placeholder.svg'
+  const posterUrl = anime.coverImage?.extraLarge || anime.coverImage?.large || anime.coverImage?.medium || ''
   const score = anime.averageScore
   const studio = anime.studios?.nodes?.[0]?.name
   const isAiring = anime.status === 'RELEASING'
   const isMovie = anime.format === 'MOVIE'
 
+  const handleClick = () => {
+    addToRecentlyViewed({
+      id: anime.id,
+      type: 'anime',
+      title,
+      poster_path: posterUrl,
+      backdrop_path: anime.bannerImage || null,
+      vote_average: anime.averageScore ? (anime.averageScore / 10).toFixed(1) : undefined,
+      release_date: anime.startDate?.year ? String(anime.startDate.year) : undefined,
+      genres: anime.genres || [],
+    })
+  }
+
   return (
     <Link
       href={`/anime/${anime.id}`}
+      onClick={handleClick}
       className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-xl select-none touch-manipulation active:scale-[0.97] active:border-primary"
     >
       {/* Poster image container */}
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-secondary">
-        <Image
-          src={posterUrl}
-          alt={title}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        {posterUrl ? (
+          <Image
+            src={posterUrl}
+            alt={title}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-secondary text-muted-foreground text-xs px-2 text-center font-bold">
+            {title}
+          </div>
+        )}
 
         {/* Gradient Overlay on hover */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

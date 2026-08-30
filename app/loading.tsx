@@ -1,1 +1,15 @@
-export default function Loading() { return <main className="min-h-screen bg-background px-4 pb-16 pt-24 md:px-8"><div className="mx-auto max-w-7xl animate-pulse"><div className="h-9 w-48 rounded-lg bg-secondary" /><div className="mt-3 h-4 w-80 rounded bg-secondary" /><div className="mt-8 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">{Array.from({ length: 18 }).map((_, index) => <div key={index} className="aspect-[2/3] rounded-xl bg-secondary" />)}</div></div></main> }
+import { Navbar } from '@/components/navbar'
+import { Footer } from '@/components/footer'
+import { TitleDetailsSkeleton } from '@/components/title-skeleton'
+
+export default function Loading() {
+  return (
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <Navbar />
+      <main className="flex-1">
+        <TitleDetailsSkeleton />
+      </main>
+      <Footer />
+    </div>
+  )
+}

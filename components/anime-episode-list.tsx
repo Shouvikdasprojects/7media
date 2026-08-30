@@ -350,12 +350,18 @@ export function AnimeEpisodeList({ anime }: { anime: AniListMedia }) {
                   >
                     <div className="flex items-center gap-4">
                       <div className="relative aspect-[2/3] w-14 sm:w-16 shrink-0 overflow-hidden rounded-lg bg-secondary shadow-sm">
-                        <Image
-                          src={item.coverImage}
-                          alt={item.title}
-                          fill
-                          className="object-cover transition-transform group-hover:scale-105"
-                        />
+                        {item.coverImage ? (
+                          <Image
+                            src={item.coverImage}
+                            alt={item.title}
+                            fill
+                            className="object-cover transition-transform group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[9px] text-muted-foreground p-1 text-center font-bold">
+                            {item.title}
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -604,7 +610,11 @@ export function AnimeEpisodeList({ anime }: { anime: AniListMedia }) {
                           fill
                           className="object-cover transition-transform group-hover:scale-105"
                         />
-                      ) : null}
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground bg-secondary">
+                          No preview
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                       <span className="absolute left-2 top-2 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-primary backdrop-blur-sm">
                         {selectedSeason === 0 ? `SP ${ep.episode_number}` : `EP ${ep.episode_number}`}

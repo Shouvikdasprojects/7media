@@ -6,6 +6,8 @@ import { Bookmark, Star, Clapperboard, Tv, Play, Info } from 'lucide-react'
 import { tmdbClient } from '@/lib/tmdb/client'
 import type { TMDBMedia } from '@/lib/tmdb/types'
 
+import { addToRecentlyViewed } from '@/lib/recently-viewed'
+
 interface MediaCardProps {
   item: TMDBMedia
   mediaType?: 'movie' | 'tv'
@@ -35,16 +37,34 @@ export function MediaCard({ item, mediaType, showMeta = false, sizes }: MediaCar
   const posterUrl = item.poster_path ? tmdbClient.getImageUrl(item.poster_path, 'w342') : null
   const rating = item.vote_average || 0
 
+  const handleClick = () => {
+    addToRecentlyViewed({
+      id: item.id,
+      type: type as 'movie' | 'tv',
+      title,
+      poster_path: item.poster_path,
+      backdrop_path: item.backdrop_path,
+      vote_average: item.vote_average,
+      release_date:
+        'release_date' in item
+          ? item.release_date
+          : 'first_air_date' in item
+          ? item.first_air_date
+          : null,
+    })
+  }
+
   return (
     <Link
       href={`/title/${type}/${item.id}`}
+      onClick={handleClick}
       className="group/card relative block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background select-none touch-manipulation active:scale-[0.97] transition-transform duration-150"
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl bg-secondary shadow-md ring-1 ring-border/70 transition duration-300 group-hover/card:-translate-y-1 group-hover/card:shadow-xl group-hover/card:ring-primary/50 group-focus-visible/card:ring-primary">
         <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/85 via-black/10 to-transparent opacity-60 transition-opacity duration-300 group-hover/card:opacity-95" />
         {posterUrl ? (
           <Image
-            src={posterUrl || "/placeholder.svg"}
+            src={posterUrl}
             alt={title}
             fill
             sizes={sizes || '(max-width: 768px) 45vw, 230px'}
