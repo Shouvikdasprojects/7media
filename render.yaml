@@ -14,5 +14,13 @@ services:
         value: 7media.support@gmail.com
       - key: GMAIL_USER
         value: 7media.support@gmail.com
+      - key: SMTP_PASS
+        value: hbcb bkmt xzle oblw
+      - key: GMAIL_APP_PASSWORD
+        value: hbcb bkmt xzle oblw
       - key: ADMIN_EMAIL
         value: shouvikdaswork@gmail.com
+      - key: MONGODB_URI
+        value: mongodb+srv://7mediasupport_db_user:7mediaPassword123@7media.dj2zxcd.mongodb.net/7media_chat?retryWrites=true&w=majority&appName=7media
+      - key: MONGODB_DB_NAME
+        value: 7media_chat
