@@ -12,6 +12,7 @@ import { WatchlistButton } from '@/components/watchlist-button'
 import { ShareModal } from '@/components/share-modal'
 import { UserReviewModal, type UserReview } from '@/components/user-review-modal'
 import { SoundtrackSection } from '@/components/soundtrack-section'
+import { MediaComments } from '@/components/media-comments'
 import { TitleDetailsSkeleton } from '@/components/title-skeleton'
 import { useAnimeDetails } from '@/lib/anilist/hooks'
 import { useSession } from '@/lib/auth-client'
@@ -751,7 +752,18 @@ export default function AnimeDetailsPage({
         )}
 
         {/* ========================================================================= */}
-        {/* 8. RECOMMENDATIONS CAROUSEL */}
+        {/* 8. LIVE COMMUNITY DISCUSSION & ANIME REVIEWS */}
+        {/* ========================================================================= */}
+        <section className="mx-auto max-w-[1880px] border-t border-white/5 px-4 md:px-8 lg:px-12 py-12">
+          <MediaComments
+            titleId={`anime-${animeId}`}
+            mediaType="anime"
+            titleName={title}
+          />
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 9. RECOMMENDATIONS CAROUSEL */}
         {/* ========================================================================= */}
         {recommendations.length > 0 && (
           <section className="mx-auto max-w-[1880px] border-t border-white/5 px-4 md:px-8 lg:px-12 py-12">

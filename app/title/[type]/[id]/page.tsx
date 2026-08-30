@@ -10,6 +10,7 @@ import { ShareModal } from '@/components/share-modal'
 import { TrailerModal } from '@/components/trailer-modal'
 import { UserReviewModal, type UserReview } from '@/components/user-review-modal'
 import { SoundtrackSection } from '@/components/soundtrack-section'
+import { MediaComments } from '@/components/media-comments'
 import { TitleDetailsSkeleton } from '@/components/title-skeleton'
 import { useMovieDetails, useShowDetails } from '@/lib/tmdb/hooks'
 import { useSession } from '@/lib/auth-client'
@@ -729,7 +730,18 @@ export default function TitlePage({
         )}
 
         {/* ========================================================================= */}
-        {/* 7. RECOMMENDATIONS & SIMILAR UNIVERSE */}
+        {/* 7. LIVE COMMUNITY DISCUSSION & REVIEWS */}
+        {/* ========================================================================= */}
+        <section className="mx-auto max-w-[1880px] border-t border-white/5 px-4 md:px-8 lg:px-12 py-12">
+          <MediaComments
+            titleId={`${type}-${titleId}`}
+            mediaType={type}
+            titleName={title}
+          />
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 8. RECOMMENDATIONS & SIMILAR UNIVERSE */}
         {/* ========================================================================= */}
         {recommendations.length > 0 && (
           <section className="mx-auto max-w-[1880px] border-t border-white/5 px-4 md:px-8 lg:px-12 py-12">

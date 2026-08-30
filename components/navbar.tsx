@@ -20,7 +20,8 @@ import {
   Sparkles,
   Calendar,
   Users,
-  Trophy
+  Trophy,
+  ShieldCheck,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
@@ -374,6 +375,18 @@ export function Navbar() {
 
                 {/* Profile Navigation Links */}
                 <div className="py-1.5 space-y-0.5">
+                  {(session?.user?.email === 'shouvikdaswork@gmail.com' ||
+                    session?.user?.email === '7media.support@gmail.com' ||
+                    (session?.user as any)?.role === 'admin') && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setAccountOpen(false)}
+                      className="flex items-center gap-2.5 rounded-2xl px-3 py-2 text-xs font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition shadow-sm mb-1"
+                    >
+                      <ShieldCheck size={15} /> <span>Admin Panel</span>
+                    </Link>
+                  )}
+
                   <Link
                     href="/profile"
                     onClick={() => setAccountOpen(false)}

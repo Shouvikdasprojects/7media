@@ -151,3 +151,59 @@ export const reactions = pgTable(
   })
 )
 
+export const contactMessages = pgTable('contact_messages', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  topic: text('topic').notNull(),
+  message: text('message').notNull(),
+  status: text('status').notNull().default('unread'), // unread, read, replied
+  replyText: text('replyText'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+})
+
+export const comments = pgTable('comments', {
+  id: text('id').primaryKey(),
+  userId: text('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  titleId: text('titleId').notNull(),
+  mediaType: text('mediaType').notNull(), // movie, tv, anime
+  parentId: text('parentId'),
+  content: text('content').notNull(),
+  isSpoiler: boolean('isSpoiler').notNull().default(false),
+  likesCount: integer('likesCount').notNull().default(0),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+})
+
+export const commentLikes = pgTable(
+  'comment_likes',
+  {
+    id: text('id').primaryKey(),
+    commentId: text('commentId')
+      .notNull()
+      .references(() => comments.id, { onDelete: 'cascade' }),
+    userId: text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueCommentUserLike: unique().on(table.commentId, table.userId),
+  })
+)
+
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey(),
+  userId: text('userId').references(() => user.id, { onDelete: 'cascade' }), // null = broadcast to all
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  type: text('type').notNull().default('info'), // info, release, system, social
+  link: text('link'),
+  isRead: boolean('isRead').notNull().default(false),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+})
+
+

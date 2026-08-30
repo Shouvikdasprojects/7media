@@ -139,6 +139,8 @@ export interface DiscoverFilters {
   country?: string
   sortBy?: string
   minVotes?: number
+  minRating?: string
+  year?: string
 }
 
 function buildDiscoverQuery(filters: DiscoverFilters) {
@@ -153,6 +155,14 @@ function buildDiscoverQuery(filters: DiscoverFilters) {
   if (filters.country && !filters.provider) params.set('watch_region', filters.country)
   if (filters.sortBy) params.set('sort_by', filters.sortBy)
   if (filters.minVotes) params.set('vote_count_gte', String(filters.minVotes))
+  if (filters.minRating) {
+    params.set('vote_average.gte', filters.minRating)
+    if (!filters.minVotes) params.set('vote_count_gte', '50')
+  }
+  if (filters.year) {
+    params.set('primary_release_year', filters.year)
+    params.set('first_air_date_year', filters.year)
+  }
   return params.toString()
 }
 

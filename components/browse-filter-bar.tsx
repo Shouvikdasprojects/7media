@@ -19,12 +19,29 @@ const TV_SORT_OPTIONS = [
   { value: 'vote_average.desc', label: 'Top IMDb' },
 ]
 
+const RATING_OPTIONS = [
+  { value: '8', label: '⭐ 8.0+ Masterpiece' },
+  { value: '7', label: '⭐ 7.0+ High Rating' },
+  { value: '6', label: '⭐ 6.0+ Good' },
+]
+
+const YEAR_OPTIONS = [
+  { value: '2026', label: '2026 Releases' },
+  { value: '2025', label: '2025' },
+  { value: '2024', label: '2024' },
+  { value: '2023', label: '2023' },
+  { value: '2020', label: '2020s' },
+  { value: '2010', label: '2010s' },
+]
+
 export interface BrowseFilters {
   genre: string
   language: string
   provider: string
   country: string
   sortBy: string
+  minRating?: string
+  year?: string
 }
 
 interface BrowseFilterBarProps {
@@ -96,7 +113,7 @@ export function BrowseFilterBar({ type, filters, onChange }: BrowseFilterBarProp
     onChange({ ...filters, [key]: value })
 
   const hasActiveFilters =
-    filters.genre || filters.language || filters.provider || filters.country
+    filters.genre || filters.language || filters.provider || filters.country || filters.minRating || filters.year
 
   return (
     <div className="flex snap-x snap-mandatory items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 scrollbar-hide touch-pan-x md:flex-wrap md:overflow-visible">
@@ -105,6 +122,18 @@ export function BrowseFilterBar({ type, filters, onChange }: BrowseFilterBarProp
         value={filters.genre}
         options={genreOptions}
         onChange={set('genre')}
+      />
+      <FilterSelect
+        label="Rating"
+        value={filters.minRating || ''}
+        options={RATING_OPTIONS}
+        onChange={set('minRating')}
+      />
+      <FilterSelect
+        label="Release Year"
+        value={filters.year || ''}
+        options={YEAR_OPTIONS}
+        onChange={set('year')}
       />
       <FilterSelect
         label="Language"
@@ -134,9 +163,9 @@ export function BrowseFilterBar({ type, filters, onChange }: BrowseFilterBarProp
         <button
           type="button"
           onClick={() =>
-            onChange({ genre: '', language: '', provider: '', country: '', sortBy: filters.sortBy })
+            onChange({ genre: '', language: '', provider: '', country: '', sortBy: filters.sortBy, minRating: '', year: '' })
           }
-          className="h-9 rounded-md px-3 text-sm text-primary transition-colors hover:bg-primary/10"
+          className="h-9 rounded-md px-3 text-sm text-primary transition-colors hover:bg-primary/10 cursor-pointer"
         >
           Clear filters
         </button>

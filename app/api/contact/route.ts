@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
+import { db } from '@/lib/db'
+import { contactMessages } from '@/lib/db/schema'
 
 // Strict email regex (RFC 5322 standard subset)
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
@@ -93,7 +95,24 @@ export async function POST(req: NextRequest) {
     const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
     const adminEmail = process.env.ADMIN_EMAIL || 'shouvikdaswork@gmail.com'
 
-    // 4. HTML Escaped Template
+    // 4. Record message in Database for Admin Dashboard Inbox
+    try {
+      const msgId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+      await db.insert(contactMessages).values({
+        id: msgId,
+        name: cleanName,
+        email: cleanEmail,
+        topic: cleanSubject,
+        message: cleanMessage,
+        status: 'unread',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    } catch (dbErr) {
+      console.error('[Contact DB Insert Error]', dbErr)
+    }
+
+    // 5. HTML Escaped Template
     const safeName = escapeHtml(cleanName)
     const safeEmail = escapeHtml(cleanEmail)
     const safeSubject = escapeHtml(cleanSubject)
