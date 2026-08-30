@@ -241,7 +241,7 @@ export default function AdminDashboardPage() {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col">
         <Navbar />
-        <main className="flex-1 flex items-center justify-center p-6">
+        <main className="flex-1 flex items-center justify-center px-4 pt-28 md:pt-32 pb-16">
           <div className="max-w-md w-full p-8 rounded-3xl border border-destructive/30 bg-destructive/10 text-center space-y-4 backdrop-blur-xl shadow-2xl">
             <div className="w-16 h-16 rounded-2xl bg-destructive/20 text-destructive flex items-center justify-center mx-auto">
               <ShieldAlert size={32} />
@@ -277,7 +277,7 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary selection:text-white">
       <Navbar />
 
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 max-w-7xl">
+      <main className="flex-1 container mx-auto px-4 sm:px-6 pt-28 md:pt-32 pb-16 max-w-7xl">
         {/* Toast alert */}
         {toast && (
           <div
