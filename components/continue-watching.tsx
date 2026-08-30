@@ -66,7 +66,7 @@ export function ContinueWatching() {
           </div>
         </div>
 
-        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scrollbar-hide pb-3 touch-pan-x md:gap-3.5">
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth scrollbar-hide pb-3 touch-pan-x md:gap-3.5">
           {items.slice(0, 10).map((item) => {
             const percent = item.duration ? Math.min(100, Math.round((item.timestamp / item.duration) * 100)) : 45
             const href = item.mediaType === 'anime' ? `/anime/${item.tmdbId}` : `/watch/${item.mediaType}/${item.tmdbId}`

@@ -72,7 +72,7 @@ export default function AnimePage() {
               </div>
             </div>
 
-            <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-2 scrollbar-hide touch-pan-x md:flex-wrap">
+            <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto scroll-smooth pb-2 scrollbar-hide touch-pan-x md:flex-wrap">
               {ANIME_GENRES.map((g) => (
                 <Link
                   key={g.id}

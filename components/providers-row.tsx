@@ -58,7 +58,7 @@ export function ProvidersRow() {
         </div>
 
         {/* Provider logos */}
-        <div ref={scrollRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-hide pb-3 touch-pan-x md:gap-4">
+        <div ref={scrollRef} className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth scrollbar-hide pb-3 touch-pan-x md:gap-4">
           {isLoading
             ? Array.from({ length: 10 }).map((_, i) => (
                 <div

@@ -116,7 +116,7 @@ export function BrowseFilterBar({ type, filters, onChange }: BrowseFilterBarProp
     filters.genre || filters.language || filters.provider || filters.country || filters.minRating || filters.year
 
   return (
-    <div className="flex snap-x snap-mandatory items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 scrollbar-hide touch-pan-x md:flex-wrap md:overflow-visible">
+    <div className="flex snap-x snap-mandatory items-center gap-2 overflow-x-auto scroll-smooth pb-1 scrollbar-hide touch-pan-x md:flex-wrap md:overflow-visible">
       <FilterSelect
         label="Genre"
         value={filters.genre}

@@ -131,7 +131,7 @@ export function RecentlyViewedSection() {
         {/* Horizontal Carousel */}
         <div
           ref={scrollContainerRef}
-          className="flex items-stretch gap-3.5 overflow-x-auto scrollbar-hide py-2 overscroll-x-contain touch-pan-x"
+          className="flex items-stretch gap-3.5 overflow-x-auto scroll-smooth scrollbar-hide py-2 touch-pan-x"
         >
           {items.map((item) => {
             const href =

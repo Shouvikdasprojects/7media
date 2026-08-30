@@ -15,8 +15,8 @@ function formatCountdown(seconds: number): string {
 }
 
 export function AnimeCard({ anime }: { anime: AniListMedia }) {
-  const title = anime.title.english || anime.title.romaji || anime.title.native || 'Untitled Anime'
-  const japaneseTitle = anime.title.native
+  const title = anime.title?.english || anime.title?.romaji || anime.title?.native || 'Untitled Anime'
+  const japaneseTitle = anime.title?.native
   const posterUrl = anime.coverImage?.extraLarge || anime.coverImage?.large || anime.coverImage?.medium || ''
   const score = anime.averageScore
   const studio = anime.studios?.nodes?.[0]?.name

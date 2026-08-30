@@ -457,9 +457,8 @@ textarea,
 }
 
 .touch-pan-x {
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
 }
 
 .touch-pan-y {

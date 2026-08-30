@@ -64,7 +64,7 @@ export function MovieCarousel({ title, movies, mediaType, viewAllHref }: MovieCa
 
         <div
           ref={scrollRef}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-hide pb-3 pt-1 touch-pan-x md:gap-3.5"
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth scrollbar-hide pb-3 pt-1 touch-pan-x md:gap-3.5"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {movies.map((item) => (
