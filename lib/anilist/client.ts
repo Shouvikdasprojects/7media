@@ -2,6 +2,40 @@ import { AniListMedia, AniListPageResponse } from './types'
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 
+// In-Memory Server TTL Cache
+interface CacheEntry<T> {
+  data: T
+  timestamp: number
+  ttl: number
+}
+
+const memoryCache = new Map<string, CacheEntry<any>>()
+
+function getCached<T>(key: string): T | null {
+  const entry = memoryCache.get(key)
+  if (!entry) return null
+  const isExpired = Date.now() - entry.timestamp > entry.ttl
+  if (isExpired) {
+    // Keep stale cache for fallback, but return null for fresh fetch
+    return null
+  }
+  return entry.data as T
+}
+
+function getStaleCached<T>(key: string): T | null {
+  const entry = memoryCache.get(key)
+  return entry ? (entry.data as T) : null
+}
+
+function setCache<T>(key: string, data: T, ttlMs = 10 * 60 * 1000) {
+  memoryCache.set(key, {
+    data,
+    timestamp: Date.now(),
+    ttl: ttlMs,
+  })
+}
+
+// Media Card GraphQL Fragment
 const MEDIA_CARD_FRAGMENT = `
   id
   idMal
@@ -53,28 +87,100 @@ const MEDIA_CARD_FRAGMENT = `
   description
 `
 
-async function fetchAniList<T>(query: string, variables: Record<string, any> = {}): Promise<T> {
-  const response = await fetch(ANILIST_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ query, variables }),
-    next: { revalidate: 3600 },
-  })
+// Helper: Calculate current anime season based on current month
+export function getCurrentAnimeSeason(): { season: 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL'; year: number } {
+  const now = new Date()
+  const month = now.getMonth() + 1 // 1-12
+  const year = now.getFullYear()
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`AniList GraphQL error ${response.status}: ${errorText}`)
+  if (month >= 1 && month <= 3) return { season: 'WINTER', year }
+  if (month >= 4 && month <= 6) return { season: 'SPRING', year }
+  if (month >= 7 && month <= 9) return { season: 'SUMMER', year }
+  return { season: 'FALL', year }
+}
+
+// Fetch with Retry, Backoff, Timeout and Stale-While-Revalidate Fallback
+async function fetchAniList<T>(query: string, variables: Record<string, any> = {}, ttlMs = 10 * 60 * 1000): Promise<T> {
+  const cacheKey = JSON.stringify({ query: query.trim(), variables })
+  const cached = getCached<T>(cacheKey)
+  if (cached) {
+    return cached
   }
 
-  const json = await response.json()
-  if (json.errors && json.errors.length > 0) {
-    throw new Error(json.errors[0].message || 'AniList GraphQL query error')
+  const maxRetries = 2
+  let attempt = 0
+  let lastError: any = null
+
+  while (attempt <= maxRetries) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
+
+      const response = await fetch(ANILIST_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ query, variables }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      // Handle Rate Limiting (429)
+      if (response.status === 429) {
+        attempt++
+        if (attempt <= maxRetries) {
+          const waitTime = 1000 * attempt + Math.floor(Math.random() * 500)
+          await new Promise((resolve) => setTimeout(resolve, waitTime))
+          continue
+        }
+        // If out of retries on 429, check stale cache
+        const stale = getStaleCached<T>(cacheKey)
+        if (stale) return stale
+        throw new Error('AniList API rate limit reached. Please try again in a moment.')
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        attempt++
+        if (attempt <= maxRetries) {
+          await new Promise((r) => setTimeout(r, 800))
+          continue
+        }
+        const stale = getStaleCached<T>(cacheKey)
+        if (stale) return stale
+        throw new Error(`AniList GraphQL error ${response.status}: ${errorText}`)
+      }
+
+      const json = await response.json()
+      if (json.errors && json.errors.length > 0) {
+        throw new Error(json.errors[0].message || 'AniList GraphQL query error')
+      }
+
+      if (json.data) {
+        setCache(cacheKey, json.data, ttlMs)
+        return json.data as T
+      }
+
+      throw new Error('No data received from AniList')
+    } catch (err: any) {
+      lastError = err
+      attempt++
+      if (attempt <= maxRetries) {
+        await new Promise((r) => setTimeout(r, 800))
+      }
+    }
   }
 
-  return json.data
+  // Fallback to stale cache if available
+  const stale = getStaleCached<T>(cacheKey)
+  if (stale) {
+    return stale
+  }
+
+  throw lastError || new Error('Failed to query AniList GraphQL API')
 }
 
 export const anilistClient = {
@@ -96,8 +202,12 @@ export const anilistClient = {
         }
       }
     `
-    const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage })
-    return data.Page
+    try {
+      const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage }, 15 * 60 * 1000)
+      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    } catch {
+      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    }
   },
 
   // 1.5 Airing Schedule for Calendar
@@ -135,12 +245,16 @@ export const anilistClient = {
         }
       }
     `
-    const data = await fetchAniList<{ Page: { airingSchedules: any[] } }>(query, {
-      start,
-      end,
-      perPage,
-    })
-    return data.Page?.airingSchedules || []
+    try {
+      const data = await fetchAniList<{ Page: { airingSchedules: any[] } }>(
+        query,
+        { start, end, perPage },
+        10 * 60 * 1000
+      )
+      return data?.Page?.airingSchedules || []
+    } catch {
+      return []
+    }
   },
 
   // 2. Popular All-Time
@@ -161,8 +275,12 @@ export const anilistClient = {
         }
       }
     `
-    const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage })
-    return data.Page
+    try {
+      const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage }, 30 * 60 * 1000)
+      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    } catch {
+      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    }
   },
 
   // 3. Top Rated All-Time
@@ -183,8 +301,12 @@ export const anilistClient = {
         }
       }
     `
-    const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage })
-    return data.Page
+    try {
+      const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage }, 30 * 60 * 1000)
+      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    } catch {
+      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    }
   },
 
   // 4. Currently Airing Anime
@@ -205,13 +327,20 @@ export const anilistClient = {
         }
       }
     `
-    const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage })
-    return data.Page
+    try {
+      const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage }, 15 * 60 * 1000)
+      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    } catch {
+      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    }
   },
 
   // 5. Seasonal Picks
   getSeasonalAnime: async (season?: string, year?: number, page = 1, perPage = 20): Promise<AniListPageResponse> => {
-    const currentYear = year || new Date().getFullYear()
+    const currentDefaults = getCurrentAnimeSeason()
+    const activeSeason = season || currentDefaults.season
+    const activeYear = year || currentDefaults.year
+
     const query = `
       query ($page: Int, $perPage: Int, $season: MediaSeason, $seasonYear: Int) {
         Page(page: $page, perPage: $perPage) {
@@ -228,13 +357,17 @@ export const anilistClient = {
         }
       }
     `
-    const data = await fetchAniList<{ Page: AniListPageResponse }>(query, {
-      page,
-      perPage,
-      season: season || 'WINTER',
-      seasonYear: currentYear,
-    })
-    return data.Page
+    try {
+      const data = await fetchAniList<{ Page: AniListPageResponse }>(query, {
+        page,
+        perPage,
+        season: activeSeason,
+        seasonYear: activeYear,
+      }, 30 * 60 * 1000)
+      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    } catch {
+      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    }
   },
 
   // 6. Anime by Genre with Multi-filter
@@ -277,12 +410,16 @@ export const anilistClient = {
       variables.status = params.status
     }
 
-    const data = await fetchAniList<{ Page: AniListPageResponse }>(query, variables)
-    return data.Page
+    try {
+      const data = await fetchAniList<{ Page: AniListPageResponse }>(query, variables, 15 * 60 * 1000)
+      return data?.Page || { pageInfo: { total: 0, currentPage: params.page || 1, lastPage: 1, hasNextPage: false, perPage: params.perPage || 24 }, media: [] }
+    } catch {
+      return { pageInfo: { total: 0, currentPage: params.page || 1, lastPage: 1, hasNextPage: false, perPage: params.perPage || 24 }, media: [] }
+    }
   },
 
   // 7. Full Anime Details (Characters, Studios, Relations, Streaming)
-  getAnimeDetails: async (id: number): Promise<AniListMedia> => {
+  getAnimeDetails: async (id: number): Promise<AniListMedia | null> => {
     const query = `
       query ($id: Int) {
         Media(id: $id, type: ANIME) {
@@ -357,8 +494,12 @@ export const anilistClient = {
         }
       }
     `
-    const data = await fetchAniList<{ Media: AniListMedia }>(query, { id })
-    return data.Media
+    try {
+      const data = await fetchAniList<{ Media: AniListMedia }>(query, { id }, 60 * 60 * 1000)
+      return data?.Media || null
+    } catch {
+      return null
+    }
   },
 
   // 8. Search Anime
@@ -379,7 +520,11 @@ export const anilistClient = {
         }
       }
     `
-    const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage, search })
-    return data.Page
+    try {
+      const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage, search }, 30 * 60 * 1000)
+      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    } catch {
+      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+    }
   },
 }

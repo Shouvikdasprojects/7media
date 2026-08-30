@@ -3,26 +3,46 @@
 import useSWR from 'swr'
 import { AniListMedia, AniListPageResponse } from './types'
 
-const fetcher = async (url: string) => {
+const listFetcher = async (url: string): Promise<AniListPageResponse> => {
   try {
     let res = await fetch(url)
     if (res.status === 429) {
-      await new Promise((r) => setTimeout(r, 600))
+      await new Promise((r) => setTimeout(r, 1000))
       res = await fetch(url)
     }
     if (!res.ok) {
       return { pageInfo: { total: 0, currentPage: 1, lastPage: 1, hasNextPage: false, perPage: 20 }, media: [] }
     }
-    return await res.json()
+    const json = await res.json()
+    if (json.error) {
+      return { pageInfo: { total: 0, currentPage: 1, lastPage: 1, hasNextPage: false, perPage: 20 }, media: [] }
+    }
+    return json
   } catch {
     return { pageInfo: { total: 0, currentPage: 1, lastPage: 1, hasNextPage: false, perPage: 20 }, media: [] }
+  }
+}
+
+const detailFetcher = async (url: string): Promise<AniListMedia | null> => {
+  try {
+    let res = await fetch(url)
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, 1000))
+      res = await fetch(url)
+    }
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json.error || !json.id) return null
+    return json as AniListMedia
+  } catch {
+    return null
   }
 }
 
 export function useTrendingAnime(page = 1, perPage = 20) {
   return useSWR<AniListPageResponse>(
     `/api/anilist/trending?page=${page}&perPage=${perPage}`,
-    fetcher,
+    listFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   )
 }
@@ -30,7 +50,7 @@ export function useTrendingAnime(page = 1, perPage = 20) {
 export function usePopularAnime(page = 1, perPage = 20) {
   return useSWR<AniListPageResponse>(
     `/api/anilist/popular?page=${page}&perPage=${perPage}`,
-    fetcher,
+    listFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   )
 }
@@ -38,7 +58,7 @@ export function usePopularAnime(page = 1, perPage = 20) {
 export function useTopRatedAnime(page = 1, perPage = 20) {
   return useSWR<AniListPageResponse>(
     `/api/anilist/top-rated?page=${page}&perPage=${perPage}`,
-    fetcher,
+    listFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   )
 }
@@ -46,17 +66,22 @@ export function useTopRatedAnime(page = 1, perPage = 20) {
 export function useCurrentlyAiringAnime(page = 1, perPage = 20) {
   return useSWR<AniListPageResponse>(
     `/api/anilist/airing?page=${page}&perPage=${perPage}`,
-    fetcher,
+    listFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   )
 }
 
 export function useSeasonalAnime(season?: string, year?: number, page = 1, perPage = 20) {
-  const s = season || 'WINTER'
-  const y = year || new Date().getFullYear()
+  const queryParams = new URLSearchParams({
+    page: String(page),
+    perPage: String(perPage),
+  })
+  if (season) queryParams.set('season', season)
+  if (year) queryParams.set('year', String(year))
+
   return useSWR<AniListPageResponse>(
-    `/api/anilist/seasonal?season=${s}&year=${y}&page=${page}&perPage=${perPage}`,
-    fetcher,
+    `/api/anilist/seasonal?${queryParams.toString()}`,
+    listFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   )
 }
@@ -79,15 +104,15 @@ export function useAnimeByGenre(params: {
 
   return useSWR<AniListPageResponse>(
     `/api/anilist/genre?${queryParams.toString()}`,
-    fetcher,
+    listFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   )
 }
 
 export function useAnimeDetails(id: number | null) {
-  return useSWR<AniListMedia>(
+  return useSWR<AniListMedia | null>(
     id ? `/api/anilist/details/${id}` : null,
-    fetcher,
+    detailFetcher,
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   )
 }
@@ -95,7 +120,7 @@ export function useAnimeDetails(id: number | null) {
 export function useSearchAnime(query: string, page = 1, perPage = 20) {
   return useSWR<AniListPageResponse>(
     query ? `/api/anilist/search?q=${encodeURIComponent(query)}&page=${page}&perPage=${perPage}` : null,
-    fetcher,
+    listFetcher,
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   )
 }

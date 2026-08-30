@@ -149,7 +149,7 @@ export default function CalendarPage() {
         const media = item.media
         const airingDate = new Date(item.airingAt * 1000)
         const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][airingDate.getDay()]
-        const title = media.title.english || media.title.romaji || media.title.native || 'Anime'
+        const title = media.title?.english || media.title?.romaji || media.title?.native || 'Anime'
         const studio = media.studios?.nodes?.[0]?.name || 'Official Broadcast'
 
         // Compute JST Time

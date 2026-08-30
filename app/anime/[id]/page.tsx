@@ -91,9 +91,9 @@ export default function AnimeDetailsPage({
   }, [animeId, session?.user])
 
   useEffect(() => {
-    if (anime && animeId) {
+    if (anime && anime.title && animeId) {
       const animeTitle =
-        anime.title.english || anime.title.romaji || anime.title.native || 'Untitled Anime'
+        anime.title?.english || anime.title?.romaji || anime.title?.native || 'Untitled Anime'
       const posterUrl =
         anime.coverImage?.extraLarge ||
         anime.coverImage?.large ||
