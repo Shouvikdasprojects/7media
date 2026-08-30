@@ -22,7 +22,7 @@ export default function DmcaPage() {
         </Link>
 
         {/* Header */}
-        <div className="mb-10 border-b border-border pb-8">
+        <div className="mb-8 border-b border-border pb-8">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-accent mb-2">
             <Shield size={16} />
             <span>Copyright Policy</span>
@@ -33,6 +33,34 @@ export default function DmcaPage() {
           <p className="mt-3 text-sm text-muted-foreground leading-relaxed max-w-3xl">
             7MEDIA strictly respects intellectual property laws, the Digital Millennium Copyright Act (17 U.S.C. § 512), and international copyright conventions.
           </p>
+        </div>
+
+        {/* Legal Navigation Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-8 scrollbar-hide">
+          <Link
+            href="/terms"
+            className="px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+          >
+            Terms of Service
+          </Link>
+          <Link
+            href="/privacy"
+            className="px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+          >
+            Privacy Policy
+          </Link>
+          <Link
+            href="/dmca"
+            className="px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap bg-primary text-primary-foreground shadow-md"
+          >
+            DMCA Protocol
+          </Link>
+          <Link
+            href="/disclaimer"
+            className="px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+          >
+            Legal Disclaimer
+          </Link>
         </div>
 
         {/* Content Sections */}

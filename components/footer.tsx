@@ -189,7 +189,7 @@ export function Footer() {
             <Link href="/dmca" className="text-xs text-muted-foreground hover:text-foreground hover:translate-x-1 transition-all">
               DMCA Takedown Protocol
             </Link>
-            <Link href="/faq#legal" className="text-xs text-muted-foreground hover:text-foreground hover:translate-x-1 transition-all">
+            <Link href="/disclaimer" className="text-xs text-muted-foreground hover:text-foreground hover:translate-x-1 transition-all">
               Legal Disclaimer
             </Link>
           </div>
