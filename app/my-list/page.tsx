@@ -29,7 +29,7 @@ import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 import { SearchModal } from '@/components/search-modal'
 import { useSession } from '@/lib/auth-client'
-import { getWatchlist, removeFromWatchlist } from '@/app/actions/watchlist'
+import { getWatchlist, removeFromWatchlist, syncGuestWatchlist } from '@/app/actions/watchlist'
 import {
   getUserCatalogs,
   saveUserCatalog,
@@ -150,6 +150,25 @@ export default function MyListPage() {
       reloadLocalStorage()
     }
   }, [dbCatalogsData, reloadLocalStorage])
+
+  // Auto-sync guest watchlist items to DB when authenticated
+  useEffect(() => {
+    if (session?.user) {
+      try {
+        const local = localStorage.getItem('7media_watchlist')
+        if (local) {
+          const list = JSON.parse(local)
+          if (Array.isArray(list) && list.length > 0) {
+            syncGuestWatchlist(list).then((res) => {
+              if (res?.success) {
+                mutateWatchlist()
+              }
+            })
+          }
+        }
+      } catch {}
+    }
+  }, [session?.user, mutateWatchlist])
 
   // Sync DB reactions
   useEffect(() => {

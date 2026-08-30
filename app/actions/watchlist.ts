@@ -95,3 +95,32 @@ export async function isInWatchlist(tmdbId: number, mediaType: 'movie' | 'tv') {
 
   return rows.length > 0
 }
+
+export async function syncGuestWatchlist(guestItems: WatchlistInput[]) {
+  const user = await getSessionUser()
+  if (!user || !Array.isArray(guestItems) || guestItems.length === 0) {
+    return { success: false }
+  }
+
+  try {
+    for (const item of guestItems) {
+      if (item && item.tmdbId) {
+        await db
+          .insert(watchlist)
+          .values({
+            userId: user.id,
+            tmdbId: item.tmdbId,
+            mediaType: item.mediaType,
+            title: item.title,
+            posterPath: item.posterPath ?? null,
+            rating: item.rating ?? null,
+          })
+          .onConflictDoNothing()
+      }
+    }
+    revalidatePath('/my-list')
+    return { success: true }
+  } catch {
+    return { success: false }
+  }
+}
