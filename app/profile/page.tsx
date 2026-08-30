@@ -501,15 +501,19 @@ export default function ProfilePage() {
     }
 
     setIsDeleting(true)
-    const res = await requestAccountDeletionOtp({ targetEmail: deleteTargetEmail.trim() })
-    setIsDeleting(false)
-
-    if (res.success) {
-      setDeleteStep('otp')
-      setDeleteResendCooldown(60)
-      notify(res.message || '6-digit deletion authorization code sent!')
-    } else {
-      notify(res.error || 'Failed to send deletion code', 'error')
+    try {
+      const res = await requestAccountDeletionOtp({ targetEmail: deleteTargetEmail.trim() })
+      if (res.success) {
+        setDeleteStep('otp')
+        setDeleteResendCooldown(60)
+        notify(res.message || '6-digit deletion authorization code sent!')
+      } else {
+        notify(res.error || 'Failed to send deletion code', 'error')
+      }
+    } catch (err: any) {
+      notify(err?.message || 'Network error sending deletion code. Please check your connection.', 'error')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -522,16 +526,20 @@ export default function ProfilePage() {
     }
 
     setIsDeleting(true)
-    const res = await confirmDeleteUserAccountWithOtp({ code: deleteOtp.trim() })
-    setIsDeleting(false)
-
-    if (res.success) {
-      notify('Your account and all associated data have been permanently deleted.')
-      await signOut()
-      router.push('/')
-      router.refresh()
-    } else {
-      notify(res.error || 'Failed to delete account', 'error')
+    try {
+      const res = await confirmDeleteUserAccountWithOtp({ code: deleteOtp.trim() })
+      if (res.success) {
+        notify('Your account and all associated data have been permanently deleted.')
+        await signOut()
+        router.push('/')
+        router.refresh()
+      } else {
+        notify(res.error || 'Failed to delete account', 'error')
+      }
+    } catch (err: any) {
+      notify(err?.message || 'Network error deleting account. Please try again.', 'error')
+    } finally {
+      setIsDeleting(false)
     }
   }
 

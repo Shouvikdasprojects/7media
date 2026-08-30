@@ -6,7 +6,7 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { and, eq, sql } from 'drizzle-orm'
 import { verifyPassword } from 'better-auth/crypto'
-import nodemailer from 'nodemailer'
+import { sendEmail } from '@/lib/email'
 
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
 
@@ -62,30 +62,13 @@ async function sendSmtpEmail({
   subject: string
   html: string
 }) {
-  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
-  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
-
-  if (!smtpPass) {
-    console.warn('SMTP_PASS not found, email skipped.')
-    return false
-  }
-
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: smtpUser,
-      pass: smtpPass.replace(/\s+/g, ''),
-    },
-  })
-
-  await transporter.sendMail({
-    from: `"7MEDIA Security" <${smtpUser}>`,
+  const res = await sendEmail({
     to,
     subject,
     html,
+    fromName: '7MEDIA Security',
   })
-
-  return true
+  return res.success
 }
 
 // ============================================================================
