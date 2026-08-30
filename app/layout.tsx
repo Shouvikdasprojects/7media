@@ -49,6 +49,9 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
     apple: '/apple-icon.png',
   },
+  verification: {
+    google: 'google3c0b6378db7cdc4f',
+  },
   openGraph: {
     type: 'website',
     url: siteUrl,

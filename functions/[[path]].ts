@@ -1,7 +1,13 @@
 ﻿export const onRequest = async (context: any) => {
   const url = new URL(context.request.url)
-  const backendHost = 'sevenmedia.onrender.com'
   
+  if (url.pathname === '/google3c0b6378db7cdc4f.html') {
+    return new Response('google-site-verification: google3c0b6378db7cdc4f.html', {
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    })
+  }
+
+  const backendHost = 'sevenmedia.onrender.com'
   url.hostname = backendHost
   url.protocol = 'https:'
   url.port = ''
