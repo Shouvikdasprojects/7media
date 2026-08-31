@@ -192,7 +192,7 @@ export default function RootLayout({
       </head>
       <body className="bg-background text-foreground antialiased font-sans" suppressHydrationWarning>
         <AppProviders>{children}</AppProviders>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {Boolean(process.env.VERCEL) && <Analytics />}
       </body>
     </html>
   )
