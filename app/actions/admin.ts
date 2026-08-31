@@ -17,6 +17,7 @@ import { eq, desc, sql, like, or, and } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import nodemailer from 'nodemailer'
+import { escapeHtml } from '@/lib/utils'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'shouvikdaswork@gmail.com'
 
@@ -216,10 +217,10 @@ export async function replyToContactMessage(params: { id: string; replyText: str
             <h1 style="margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #ffffff; text-transform: uppercase;">7MEDIA SUPPORT DESK</h1>
           </div>
           <div style="padding: 28px;">
-            <p style="font-size: 15px; color: #a1a1aa; margin-top: 0;">Hello <strong style="color: #ffffff;">${msg.name}</strong>,</p>
-            <p style="font-size: 14px; color: #d4d4d8; line-height: 1.6;">Regarding your topic: <strong style="color: #fb7185;">${msg.topic}</strong></p>
-            <div style="background: #18181b; border-left: 4px solid #e11d48; padding: 16px; border-radius: 8px; margin: 20px 0; font-size: 14px; color: #ffffff; white-space: pre-wrap; line-height: 1.6;">${replyText}</div>
-            <p style="font-size: 12px; color: #71717a; margin-bottom: 0;">Original Inquiry: "<em>${msg.message}</em>"</p>
+            <p style="font-size: 15px; color: #a1a1aa; margin-top: 0;">Hello <strong style="color: #ffffff;">${escapeHtml(msg.name)}</strong>,</p>
+            <p style="font-size: 14px; color: #d4d4d8; line-height: 1.6;">Regarding your topic: <strong style="color: #fb7185;">${escapeHtml(msg.topic)}</strong></p>
+            <div style="background: #18181b; border-left: 4px solid #e11d48; padding: 16px; border-radius: 8px; margin: 20px 0; font-size: 14px; color: #ffffff; white-space: pre-wrap; line-height: 1.6;">${escapeHtml(replyText)}</div>
+            <p style="font-size: 12px; color: #71717a; margin-bottom: 0;">Original Inquiry: "<em>${escapeHtml(msg.message)}</em>"</p>
           </div>
           <div style="background: #121318; padding: 16px; text-align: center; border-top: 1px solid #27272a; font-size: 11px; color: #71717a;">
             7MEDIA Streaming Network • Direct Support: 7media.support@gmail.com

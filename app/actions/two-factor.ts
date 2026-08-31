@@ -7,6 +7,7 @@ import { headers } from 'next/headers'
 import { and, eq, sql } from 'drizzle-orm'
 import { verifyPassword } from 'better-auth/crypto'
 import { sendEmail } from '@/lib/email'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
 
@@ -571,6 +572,19 @@ export async function verify2FALoginChallenge(data: {
 }) {
   const cleanCode = data.code?.trim().replace(/\s+/g, '')
   if (!cleanCode) return { success: false, error: 'Please enter a valid code.' }
+
+  // Anti-Brute-Force Rate Limiter: Max 5 attempts per 15 minutes per user
+  const rateLimitResult = checkRateLimit(`2fa-verify:${data.userId}`, {
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+  })
+
+  if (!rateLimitResult.success) {
+    return {
+      success: false,
+      error: 'Too many incorrect attempts. For security, 2FA verification is locked for 15 minutes.',
+    }
+  }
 
   await ensureTwoFactorTable()
 

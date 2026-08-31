@@ -8,6 +8,8 @@ import { and, eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { hashPassword, verifyPassword } from 'better-auth/crypto'
 import { sendEmail } from '@/lib/email'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { escapeHtml } from '@/lib/utils'
 
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
 
@@ -306,6 +308,19 @@ export async function resetPasswordWithCode(data: { email: string; code: string;
     return { success: false, error: 'Please enter both your email and the 6-digit code.' }
   }
 
+  // Anti-Brute-Force Rate Limiter: Max 5 attempts per 15 minutes per email
+  const rateLimitResult = checkRateLimit(`pwd-reset:${cleanEmail}`, {
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+  })
+
+  if (!rateLimitResult.success) {
+    return {
+      success: false,
+      error: 'Too many incorrect attempts. For your security, password reset is locked for 15 minutes.',
+    }
+  }
+
   if (!data.newPassword || data.newPassword.length < 6) {
     return { success: false, error: 'New password must be at least 6 characters long.' }
   }
@@ -558,7 +573,7 @@ export async function requestSignupOtp(data: { name: string; email: string; pass
             <p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 1.5px;">Account Email Verification</p>
           </div>
           <div style="padding: 28px 24px;">
-            <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #ffffff;">Welcome, ${cleanName}!</h2>
+            <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #ffffff;">Welcome, ${escapeHtml(cleanName)}!</h2>
             <p style="font-size: 13px; color: #a1a1aa; line-height: 1.6; margin-bottom: 20px;">
               Thank you for joining 7MEDIA. To complete your registration and activate your account, please enter the 6-digit verification code below:
             </p>
