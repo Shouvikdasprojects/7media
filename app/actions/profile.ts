@@ -344,15 +344,18 @@ export async function resetPasswordWithCode(data: { email: string; code: string;
     if (existingAccounts.length > 0) {
       await db
         .update(account)
-        .set({ password: hashedPassword, updatedAt: new Date() })
+        .set({ password: hashedPassword, issuer: 'local:credential', updatedAt: new Date() })
         .where(eq(account.id, existingAccounts[0].id))
     } else {
       await db.insert(account).values({
         id: `acc_${targetUser.id}_cred_${Date.now()}`,
         accountId: targetUser.id,
         providerId: 'credential',
+        issuer: 'local:credential',
         userId: targetUser.id,
         password: hashedPassword,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
     }
 
@@ -679,6 +682,7 @@ export async function verifySignupOtpAndCreateAccount(data: {
       id: `acc_${newUserId}_cred`,
       accountId: newUserId,
       providerId: 'credential',
+      issuer: 'local:credential',
       userId: newUserId,
       password: hashedPassword,
       createdAt: new Date(),
