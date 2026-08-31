@@ -146,7 +146,7 @@ export async function requestEnable2FA(data?: { deliveryEmail?: string }) {
   try {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
     const otpIdentifier = `2fa-enable-otp:${currentUser.id}`
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15m
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
 
     await db.delete(verification).where(eq(verification.identifier, otpIdentifier))
     await db.insert(verification).values({
@@ -177,7 +177,7 @@ export async function requestEnable2FA(data?: { deliveryEmail?: string }) {
             </div>
             
             <p style="font-size: 12px; color: #71717a; line-height: 1.5;">
-              This code will expire in <strong>15 minutes</strong>. If you did not initiate 2FA activation, please secure your account immediately.
+              This code will expire in <strong>5 minutes</strong>. If you did not initiate 2FA activation, please secure your account immediately.
             </p>
           </div>
           <div style="border-top: 1px solid rgba(255,255,255,0.06); padding: 16px 24px; text-align: center; font-size: 11px; color: #52525b;">
@@ -298,7 +298,7 @@ export async function requestDisable2FA() {
     const targetEmail = statusRecord.deliveryEmail || currentUser.email
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
     const otpIdentifier = `2fa-disable-otp:${currentUser.id}`
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
 
     await db.delete(verification).where(eq(verification.identifier, otpIdentifier))
     await db.insert(verification).values({
@@ -505,7 +505,7 @@ export async function initiate2FALoginChallenge(data: { email: string; password?
     const targetEmail = twoFactorRecord.deliveryEmail || targetUser.email
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
     const otpIdentifier = `2fa-login-otp:${targetUser.id}`
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
 
     await db.delete(verification).where(eq(verification.identifier, otpIdentifier))
     await db.insert(verification).values({
@@ -537,7 +537,7 @@ export async function initiate2FALoginChallenge(data: { email: string; password?
             </div>
             
             <p style="font-size: 12px; color: #71717a; line-height: 1.5;">
-              This code will expire in <strong>10 minutes</strong>. If you did not attempt to sign in, someone may know your password. Change your password immediately.
+              This code will expire in <strong>5 minutes</strong>. If you did not attempt to sign in, someone may know your password. Change your password immediately.
             </p>
           </div>
           <div style="border-top: 1px solid rgba(255,255,255,0.06); padding: 16px 24px; text-align: center; font-size: 11px; color: #52525b;">
