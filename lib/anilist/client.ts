@@ -211,10 +211,13 @@ export const anilistClient = {
   },
 
   // 1.5 Airing Schedule for Calendar
-  getAiringSchedule: async (start: number, end: number, perPage = 50) => {
+  getAiringSchedule: async (start: number, end: number, _perPage = 50) => {
     const query = `
-      query ($start: Int, $end: Int, $perPage: Int) {
-        Page(page: 1, perPage: $perPage) {
+      query ($start: Int, $end: Int, $page: Int) {
+        Page(page: $page, perPage: 50) {
+          pageInfo {
+            hasNextPage
+          }
           airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
             id
             airingAt
@@ -246,12 +249,19 @@ export const anilistClient = {
       }
     `
     try {
-      const data = await fetchAniList<{ Page: { airingSchedules: any[] } }>(
-        query,
-        { start, end, perPage },
-        10 * 60 * 1000
-      )
-      return data?.Page?.airingSchedules || []
+      let combined: any[] = []
+      // Fetch up to 3 pages (up to 150 items) to cover every day of the full week
+      for (let p = 1; p <= 3; p++) {
+        const data = await fetchAniList<{ Page: { pageInfo: { hasNextPage: boolean }; airingSchedules: any[] } }>(
+          query,
+          { start, end, page: p },
+          15 * 60 * 1000
+        )
+        const list = data?.Page?.airingSchedules || []
+        combined = combined.concat(list)
+        if (!data?.Page?.pageInfo?.hasNextPage) break
+      }
+      return combined
     } catch {
       return []
     }

@@ -111,13 +111,16 @@ export default function CalendarPage() {
   const fetchLiveSchedule = () => {
     setIsLoading(true)
     const currentNow = Math.floor(Date.now() / 1000)
-    const startOfWeek = currentNow - 3 * 86400
-    const endOfWeek = currentNow + 6 * 86400
+    const startOfWeek = currentNow - 86400
+    const endOfWeek = currentNow + 7 * 86400
 
     Promise.all([
-      fetch(`/api/anilist/airing-schedule?start=${startOfWeek}&end=${endOfWeek}&perPage=50`)
+      fetch(`/api/anilist/airing-schedule?start=${startOfWeek}&end=${endOfWeek}`)
         .then((r) => r.json())
         .catch(() => ({ schedules: [] })),
+      fetch('/api/anilist/airing?page=1&perPage=25')
+        .then((r) => r.json())
+        .catch(() => ({ media: [] })),
       fetch('/api/tmdb/airing-today/shows')
         .then((r) => r.json())
         .catch(() => ({ results: [] })),
@@ -127,8 +130,9 @@ export default function CalendarPage() {
       fetch('/api/tmdb/upcoming/movies')
         .then((r) => r.json())
         .catch(() => ({ results: [] })),
-    ]).then(([animeRes, airingTodayRes, onTheAirRes, upcomingRes]) => {
+    ]).then(([animeRes, airingAnimeRes, airingTodayRes, onTheAirRes, upcomingRes]) => {
       const animeSchedules = animeRes?.schedules || []
+      const airingAnimeList = airingAnimeRes?.media || []
       const airingToday = airingTodayRes?.results || []
       const onTheAir = onTheAirRes?.results || []
       const upcomingMovies = upcomingRes?.results || []
@@ -143,10 +147,14 @@ export default function CalendarPage() {
         Sun: [],
       }
 
-      // A. Real Airing Anime from AniList GraphQL
+      const seenAnimeIds = new Set<number>()
+
+      // A. Real Airing Anime from AniList Airing Schedules
       animeSchedules.forEach((item: any) => {
-        if (!item || !item.media) return
+        if (!item || !item.media || seenAnimeIds.has(item.media.id)) return
         const media = item.media
+        seenAnimeIds.add(media.id)
+
         const airingDate = new Date(item.airingAt * 1000)
         const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][airingDate.getDay()]
         const title = media.title?.english || media.title?.romaji || media.title?.native || 'Anime'
@@ -174,6 +182,42 @@ export default function CalendarPage() {
           rating: media.averageScore ? (media.averageScore / 10).toFixed(1) : '8.6',
           episode: `Ep ${item.episode}`,
           genre: media.genres?.slice(0, 2).join(', ') || 'Animation',
+          href: `/anime/${media.id}`,
+        })
+      })
+
+      // Fallback/Augment with Currently Airing Anime if any day is sparse
+      airingAnimeList.forEach((media: any, idx: number) => {
+        if (!media || seenAnimeIds.has(media.id)) return
+        seenAnimeIds.add(media.id)
+
+        const airingAt = media.nextAiringEpisode?.airingAt || (currentNow + ((idx % 7) * 86400))
+        const airingDate = new Date(airingAt * 1000)
+        const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][airingDate.getDay()]
+        const title = media.title?.english || media.title?.romaji || media.title?.native || 'Anime'
+        const studio = media.studios?.nodes?.[0]?.name || 'Tokyo Broadcast'
+
+        const jstString = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Tokyo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }).format(airingDate)
+
+        grouped[dayName].push({
+          id: media.id,
+          title,
+          type: 'anime',
+          network: `${studio} · AniList`,
+          airingAtTimestamp: airingAt,
+          rawDate: airingDate,
+          time: airingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          jstTime: `${jstString} JST`,
+          countdown: formatCountdown(airingAt, currentNow),
+          image: media.coverImage?.large || media.coverImage?.extraLarge || media.coverImage?.medium || '',
+          rating: media.averageScore ? (media.averageScore / 10).toFixed(1) : '8.8',
+          episode: media.nextAiringEpisode?.episode ? `Ep ${media.nextAiringEpisode.episode}` : 'New Episode',
+          genre: media.genres?.slice(0, 2).join(', ') || 'Anime Premiere',
           href: `/anime/${media.id}`,
         })
       })
