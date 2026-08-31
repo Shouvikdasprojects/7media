@@ -289,14 +289,18 @@ export default function ProfilePage() {
     }
 
     setIsSendingReset(true)
-    const res = await requestPasswordReset(userEmail)
-    setIsSendingReset(false)
-
-    if (res.success) {
-      setResetSent(true)
-      notify('6-digit reset code sent to your email!')
-    } else {
-      notify(res.error || 'Failed to send reset code', 'error')
+    try {
+      const res = await requestPasswordReset(userEmail)
+      if (res.success) {
+        setResetSent(true)
+        notify('6-digit reset code sent to your email!')
+      } else {
+        notify(res.error || 'Failed to send reset code', 'error')
+      }
+    } catch (err: any) {
+      notify(err?.message || 'Network error sending reset code. Please try again.', 'error')
+    } finally {
+      setIsSendingReset(false)
     }
   }
 
@@ -316,20 +320,24 @@ export default function ProfilePage() {
     }
 
     setIsResetting(true)
-    const res = await resetPasswordWithCode({
-      email: userEmail,
-      code: resetCode.trim(),
-      newPassword: resetNewPass,
-    })
-    setIsResetting(false)
-
-    if (res.success) {
-      notify('Password has been successfully reset! You can now log in with your new password.')
-      setResetSent(false)
-      setResetCode('')
-      setResetNewPass('')
-    } else {
-      notify(res.error || 'Failed to reset password', 'error')
+    try {
+      const res = await resetPasswordWithCode({
+        email: userEmail,
+        code: resetCode.trim(),
+        newPassword: resetNewPass,
+      })
+      if (res.success) {
+        notify('Password has been successfully reset! You can now log in with your new password.')
+        setResetSent(false)
+        setResetCode('')
+        setResetNewPass('')
+      } else {
+        notify(res.error || 'Failed to reset password', 'error')
+      }
+    } catch (err: any) {
+      notify(err?.message || 'Network error resetting password. Please try again.', 'error')
+    } finally {
+      setIsResetting(false)
     }
   }
 

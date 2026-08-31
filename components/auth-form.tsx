@@ -733,13 +733,18 @@ export function AuthForm({ mode }: AuthFormProps) {
                   if (!forgotEmail.trim()) return
                   setForgotLoading(true)
                   setForgotMsg(null)
-                  const res = await requestPasswordReset(forgotEmail)
-                  setForgotLoading(false)
-                  if (res.success) {
-                    setForgotMsg({ type: 'success', text: res.message || '6-digit code sent to your email!' })
-                    setForgotStep('code')
-                  } else {
-                    setForgotMsg({ type: 'error', text: res.error || 'Failed to send reset code.' })
+                  try {
+                    const res = await requestPasswordReset(forgotEmail)
+                    if (res.success) {
+                      setForgotMsg({ type: 'success', text: res.message || '6-digit code sent to your email!' })
+                      setForgotStep('code')
+                    } else {
+                      setForgotMsg({ type: 'error', text: res.error || 'Failed to send reset code.' })
+                    }
+                  } catch (err: any) {
+                    setForgotMsg({ type: 'error', text: err?.message || 'Network error sending reset code.' })
+                  } finally {
+                    setForgotLoading(false)
                   }
                 }}
                 className="space-y-4"
@@ -777,22 +782,27 @@ export function AuthForm({ mode }: AuthFormProps) {
                   if (!forgotCode.trim() || forgotNewPass.length < 6) return
                   setForgotLoading(true)
                   setForgotMsg(null)
-                  const res = await resetPasswordWithCode({
-                    email: forgotEmail,
-                    code: forgotCode.trim(),
-                    newPassword: forgotNewPass,
-                  })
-                  setForgotLoading(false)
-                  if (res.success) {
-                    setForgotMsg({
-                      type: 'success',
-                      text: 'Password reset successful! You can now sign in.',
+                  try {
+                    const res = await resetPasswordWithCode({
+                      email: forgotEmail,
+                      code: forgotCode.trim(),
+                      newPassword: forgotNewPass,
                     })
-                    setTimeout(() => {
-                      setForgotOpen(false)
-                    }, 2000)
-                  } else {
-                    setForgotMsg({ type: 'error', text: res.error || 'Failed to reset password.' })
+                    if (res.success) {
+                      setForgotMsg({
+                        type: 'success',
+                        text: 'Password reset successful! You can now sign in.',
+                      })
+                      setTimeout(() => {
+                        setForgotOpen(false)
+                      }, 2000)
+                    } else {
+                      setForgotMsg({ type: 'error', text: res.error || 'Failed to reset password.' })
+                    }
+                  } catch (err: any) {
+                    setForgotMsg({ type: 'error', text: err?.message || 'Network error resetting password.' })
+                  } finally {
+                    setForgotLoading(false)
                   }
                 }}
                 className="space-y-4"
