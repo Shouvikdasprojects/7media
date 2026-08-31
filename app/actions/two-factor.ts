@@ -157,11 +157,11 @@ export async function requestEnable2FA(data?: { deliveryEmail?: string }) {
 
     const emailResult = await sendSmtpEmail({
       to: targetEmail,
-      subject: `[7MEDIA] 2FA Activation Security Code: ${otpCode}`,
+      subject: `[7MEDIA] Your 2FA Verification Code: ${otpCode}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
           <div style="background: #e50914; padding: 22px 24px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px;">7MEDIA SECURITY</h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
             <p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 1.5px;">Two-Factor Authentication Setup</p>
           </div>
           <div style="padding: 28px 24px;">
@@ -309,11 +309,11 @@ export async function requestDisable2FA() {
 
     const emailResult = await sendSmtpEmail({
       to: targetEmail,
-      subject: `[7MEDIA] Security Code to Disable 2FA: ${otpCode}`,
+      subject: `[7MEDIA] Your 2FA Confirmation Code: ${otpCode}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
           <div style="background: #e50914; padding: 22px 24px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px;">7MEDIA SECURITY</h1>
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
             <p style="margin: 4px 0 0 0; color: rgba(255,255,255,0.85); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 1.5px;">2FA Removal Notice</p>
           </div>
           <div style="padding: 28px 24px;">
@@ -517,7 +517,7 @@ export async function initiate2FALoginChallenge(data: { email: string; password?
     // 5. Send Email via Gmail SMTP
     const emailResult = await sendSmtpEmail({
       to: targetEmail,
-      subject: `[7MEDIA] Your 2FA Login Security Code: ${otpCode}`,
+      subject: `[7MEDIA] Your Sign-In Code: ${otpCode}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
           <div style="background: #e50914; padding: 22px 24px; text-align: center;">

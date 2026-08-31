@@ -22,14 +22,24 @@ interface SendEmailParams {
   to: string
   subject: string
   html: string
+  text?: string
   fromName?: string
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export async function sendEmail({
   to,
   subject,
   html,
-  fromName = '7MEDIA Security',
+  text,
+  fromName = '7MEDIA',
 }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
@@ -40,6 +50,21 @@ export async function sendEmail({
   }
 
   const cleanPass = smtpPass.replace(/\s+/g, '')
+  const plainText = text || stripHtml(html)
+
+  const mailPayload = {
+    from: `"${fromName}" <${smtpUser}>`,
+    to,
+    replyTo: smtpUser,
+    subject,
+    text: plainText,
+    html,
+    headers: {
+      'X-Entity-Ref-ID': `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      'X-Auto-Response-Suppress': 'All',
+      'Auto-Submitted': 'auto-generated',
+    },
+  }
 
   // 1. Primary Strategy: Port 465 (Direct SSL) with explicit IPv4 custom lookup & TLS SNI
   try {
@@ -60,12 +85,7 @@ export async function sendEmail({
       socketTimeout: 15000,
     } as any)
 
-    await transporter.sendMail({
-      from: `"${fromName}" <${smtpUser}>`,
-      to,
-      subject,
-      html,
-    })
+    await transporter.sendMail(mailPayload)
 
     return { success: true }
   } catch (primaryErr: any) {
@@ -91,12 +111,7 @@ export async function sendEmail({
         socketTimeout: 15000,
       } as any)
 
-      await fallbackTransporter.sendMail({
-        from: `"${fromName}" <${smtpUser}>`,
-        to,
-        subject,
-        html,
-      })
+      await fallbackTransporter.sendMail(mailPayload)
 
       return { success: true }
     } catch (fallbackErr: any) {
