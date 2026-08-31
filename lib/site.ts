@@ -5,5 +5,8 @@ export function getSiteUrl(): string {
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   }
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://7media.pages.dev'
+  }
   return 'http://localhost:3000'
 }
