@@ -62,13 +62,12 @@ async function sendSmtpEmail({
   subject: string
   html: string
 }) {
-  const res = await sendEmail({
+  return sendEmail({
     to,
     subject,
     html,
     fromName: '7MEDIA Security',
   })
-  return res.success
 }
 
 // ============================================================================
@@ -156,7 +155,7 @@ export async function requestEnable2FA(data?: { deliveryEmail?: string }) {
       expiresAt,
     })
 
-    await sendSmtpEmail({
+    const emailResult = await sendSmtpEmail({
       to: targetEmail,
       subject: `[7MEDIA] 2FA Activation Security Code: ${otpCode}`,
       html: `
@@ -186,6 +185,10 @@ export async function requestEnable2FA(data?: { deliveryEmail?: string }) {
         </div>
       `,
     })
+
+    if (!emailResult.success) {
+      return { success: false, error: emailResult.error || 'Failed to send 2FA activation code to your email. Please try again.' }
+    }
 
     return {
       success: true,
@@ -304,7 +307,7 @@ export async function requestDisable2FA() {
       expiresAt,
     })
 
-    await sendSmtpEmail({
+    const emailResult = await sendSmtpEmail({
       to: targetEmail,
       subject: `[7MEDIA] Security Code to Disable 2FA: ${otpCode}`,
       html: `
@@ -331,6 +334,10 @@ export async function requestDisable2FA() {
         </div>
       `,
     })
+
+    if (!emailResult.success) {
+      return { success: false, error: emailResult.error || 'Failed to send confirmation code to your email.' }
+    }
 
     return {
       success: true,
@@ -508,7 +515,7 @@ export async function initiate2FALoginChallenge(data: { email: string; password?
     })
 
     // 5. Send Email via Gmail SMTP
-    await sendSmtpEmail({
+    const emailResult = await sendSmtpEmail({
       to: targetEmail,
       subject: `[7MEDIA] Your 2FA Login Security Code: ${otpCode}`,
       html: `
@@ -538,6 +545,10 @@ export async function initiate2FALoginChallenge(data: { email: string; password?
         </div>
       `,
     })
+
+    if (!emailResult.success) {
+      console.error('Failed to dispatch 2FA login email:', emailResult.error)
+    }
 
     return {
       requires2FA: true,

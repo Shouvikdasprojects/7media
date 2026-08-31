@@ -1,4 +1,12 @@
 import nodemailer from 'nodemailer'
+import dns from 'dns'
+
+// Force IPv4 first in Node.js DNS resolution to eliminate Render / Linux container IPv6 ENETUNREACH errors
+if (dns.setDefaultResultOrder) {
+  try {
+    dns.setDefaultResultOrder('ipv4first')
+  } catch {}
+}
 
 interface SendEmailParams {
   to: string
@@ -21,17 +29,23 @@ export async function sendEmail({
     return { success: false, error: 'Email delivery service is currently not configured on this server.' }
   }
 
+  const cleanPass = smtpPass.replace(/\s+/g, '')
+
+  // 1. Primary Strategy: Port 465 (Direct SSL) with explicit IPv4
   try {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      family: 4, // CRITICAL: Forces IPv4 to bypass Render container IPv6 ENETUNREACH
       auth: {
         user: smtpUser,
-        pass: smtpPass.replace(/\s+/g, ''),
+        pass: cleanPass,
       },
-      connectionTimeout: 7000,
-      greetingTimeout: 7000,
-      socketTimeout: 9000,
-    })
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 12000,
+    } as any)
 
     await transporter.sendMail({
       from: `"${fromName}" <${smtpUser}>`,
@@ -41,11 +55,40 @@ export async function sendEmail({
     })
 
     return { success: true }
-  } catch (err: any) {
-    console.error('[Email] Failed to send email via SMTP:', err?.message || err)
-    return {
-      success: false,
-      error: err?.message || 'Failed to dispatch email. Please check network and try again.',
+  } catch (primaryErr: any) {
+    console.warn('[Email] Port 465 delivery attempt failed, trying fallback Port 587 (TLS)...', primaryErr?.message || primaryErr)
+
+    // 2. Secondary Strategy: Port 587 (STARTTLS) with explicit IPv4
+    try {
+      const fallbackTransporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        family: 4, // CRITICAL: Forces IPv4
+        auth: {
+          user: smtpUser,
+          pass: cleanPass,
+        },
+        connectionTimeout: 8000,
+        greetingTimeout: 8000,
+        socketTimeout: 12000,
+      } as any)
+
+      await fallbackTransporter.sendMail({
+        from: `"${fromName}" <${smtpUser}>`,
+        to,
+        subject,
+        html,
+      })
+
+      return { success: true }
+    } catch (fallbackErr: any) {
+      console.error('[Email] All SMTP delivery attempts failed:', fallbackErr?.message || fallbackErr)
+      return {
+        success: false,
+        error: fallbackErr?.message || 'Failed to dispatch email. Please check network and try again.',
+      }
     }
   }
 }
