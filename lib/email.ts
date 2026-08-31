@@ -8,6 +8,16 @@ if (dns.setDefaultResultOrder) {
   } catch {}
 }
 
+// Custom IPv4 lookup function that forces family: 4 and resolves ONLY IPv4 addresses
+const ipv4Lookup = (hostname: string, _options: any, callback: (err: NodeJS.ErrnoException | null, address?: string, family?: number) => void) => {
+  dns.lookup(hostname, { family: 4 }, (err, address) => {
+    if (err) {
+      return callback(err)
+    }
+    callback(null, address, 4)
+  })
+}
+
 interface SendEmailParams {
   to: string
   subject: string
@@ -31,20 +41,23 @@ export async function sendEmail({
 
   const cleanPass = smtpPass.replace(/\s+/g, '')
 
-  // 1. Primary Strategy: Port 465 (Direct SSL) with explicit IPv4
+  // 1. Primary Strategy: Port 465 (Direct SSL) with explicit IPv4 custom lookup & TLS SNI
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
-      family: 4, // CRITICAL: Forces IPv4 to bypass Render container IPv6 ENETUNREACH
+      lookup: ipv4Lookup,
+      tls: {
+        servername: 'smtp.gmail.com',
+      },
       auth: {
         user: smtpUser,
         pass: cleanPass,
       },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 12000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     } as any)
 
     await transporter.sendMail({
@@ -58,21 +71,24 @@ export async function sendEmail({
   } catch (primaryErr: any) {
     console.warn('[Email] Port 465 delivery attempt failed, trying fallback Port 587 (TLS)...', primaryErr?.message || primaryErr)
 
-    // 2. Secondary Strategy: Port 587 (STARTTLS) with explicit IPv4
+    // 2. Secondary Strategy: Port 587 (STARTTLS) with explicit IPv4 custom lookup & TLS SNI
     try {
       const fallbackTransporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
         secure: false,
         requireTLS: true,
-        family: 4, // CRITICAL: Forces IPv4
+        lookup: ipv4Lookup,
+        tls: {
+          servername: 'smtp.gmail.com',
+        },
         auth: {
           user: smtpUser,
           pass: cleanPass,
         },
-        connectionTimeout: 8000,
-        greetingTimeout: 8000,
-        socketTimeout: 12000,
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
       } as any)
 
       await fallbackTransporter.sendMail({
