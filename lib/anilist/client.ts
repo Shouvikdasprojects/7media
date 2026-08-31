@@ -1,4 +1,5 @@
 import { AniListMedia, AniListPageResponse } from './types'
+import { jikanFallback, kitsuFallback } from './fallback-providers'
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 
@@ -16,7 +17,6 @@ function getCached<T>(key: string): T | null {
   if (!entry) return null
   const isExpired = Date.now() - entry.timestamp > entry.ttl
   if (isExpired) {
-    // Keep stale cache for fallback, but return null for fresh fetch
     return null
   }
   return entry.data as T
@@ -136,10 +136,9 @@ async function fetchAniList<T>(query: string, variables: Record<string, any> = {
           await new Promise((resolve) => setTimeout(resolve, waitTime))
           continue
         }
-        // If out of retries on 429, check stale cache
         const stale = getStaleCached<T>(cacheKey)
         if (stale) return stale
-        throw new Error('AniList API rate limit reached. Please try again in a moment.')
+        throw new Error('AniList API rate limit reached.')
       }
 
       if (!response.ok) {
@@ -174,7 +173,6 @@ async function fetchAniList<T>(query: string, variables: Record<string, any> = {
     }
   }
 
-  // Fallback to stale cache if available
   const stale = getStaleCached<T>(cacheKey)
   if (stale) {
     return stale
@@ -182,6 +180,10 @@ async function fetchAniList<T>(query: string, variables: Record<string, any> = {
 
   throw lastError || new Error('Failed to query AniList GraphQL API')
 }
+
+// ============================================================================
+// RESILIENT MULTI-TIER ANIME CLIENT (AniList -> Jikan -> Kitsu)
+// ============================================================================
 
 export const anilistClient = {
   // 1. Trending Anime
@@ -202,12 +204,35 @@ export const anilistClient = {
         }
       }
     `
+    // Tier 1: AniList
     try {
       const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage }, 15 * 60 * 1000)
-      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
-    } catch {
-      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+      if (data?.Page?.media && data.Page.media.length > 0) {
+        return data.Page
+      }
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed getTrendingAnime, falling back to Jikan/Kitsu:', err)
     }
+
+    // Tier 2: Jikan (MyAnimeList)
+    try {
+      const jikanData = await jikanFallback.getTrendingAnime(page, perPage)
+      if (jikanData && jikanData.media.length > 0) {
+        console.log('[Jikan Tier 2] Successfully served Trending Anime fallback')
+        return jikanData
+      }
+    } catch {}
+
+    // Tier 3: Kitsu
+    try {
+      const kitsuData = await kitsuFallback.getTrendingAnime(perPage)
+      if (kitsuData && kitsuData.media.length > 0) {
+        console.log('[Kitsu Tier 3] Successfully served Trending Anime fallback')
+        return kitsuData
+      }
+    } catch {}
+
+    return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
   },
 
   // 1.5 Airing Schedule for Calendar
@@ -248,9 +273,9 @@ export const anilistClient = {
         }
       }
     `
+    // Tier 1: AniList Multi-Page
     try {
       let combined: any[] = []
-      // Fetch up to 3 pages (up to 150 items) to cover every day of the full week
       for (let p = 1; p <= 3; p++) {
         const data = await fetchAniList<{ Page: { pageInfo: { hasNextPage: boolean }; airingSchedules: any[] } }>(
           query,
@@ -261,10 +286,42 @@ export const anilistClient = {
         combined = combined.concat(list)
         if (!data?.Page?.pageInfo?.hasNextPage) break
       }
-      return combined
-    } catch {
-      return []
+      if (combined.length > 0) return combined
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed getAiringSchedule, falling back to Jikan/Kitsu:', err)
     }
+
+    // Tier 2: Jikan Fallback
+    try {
+      const airing = await jikanFallback.getCurrentlyAiringAnime(1, 30)
+      if (airing && airing.media.length > 0) {
+        const now = Math.floor(Date.now() / 1000)
+        return airing.media.map((m, idx) => ({
+          id: m.id,
+          airingAt: now + (idx % 7) * 86400,
+          episode: m.episodes || 1,
+          timeUntilAiring: (idx % 7) * 86400,
+          media: m,
+        }))
+      }
+    } catch {}
+
+    // Tier 3: Kitsu Fallback
+    try {
+      const airing = await kitsuFallback.getCurrentlyAiringAnime(1, 30)
+      if (airing && airing.media.length > 0) {
+        const now = Math.floor(Date.now() / 1000)
+        return airing.media.map((m, idx) => ({
+          id: m.id,
+          airingAt: now + (idx % 7) * 86400,
+          episode: m.episodes || 1,
+          timeUntilAiring: (idx % 7) * 86400,
+          media: m,
+        }))
+      }
+    } catch {}
+
+    return []
   },
 
   // 2. Popular All-Time
@@ -285,12 +342,29 @@ export const anilistClient = {
         }
       }
     `
+    // Tier 1: AniList
     try {
       const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage }, 30 * 60 * 1000)
-      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
-    } catch {
-      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+      if (data?.Page?.media && data.Page.media.length > 0) {
+        return data.Page
+      }
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed getPopularAnime:', err)
     }
+
+    // Tier 2: Jikan
+    try {
+      const jikanData = await jikanFallback.getPopularAnime(page, perPage)
+      if (jikanData && jikanData.media.length > 0) return jikanData
+    } catch {}
+
+    // Tier 3: Kitsu
+    try {
+      const kitsuData = await kitsuFallback.getPopularAnime(page, perPage)
+      if (kitsuData && kitsuData.media.length > 0) return kitsuData
+    } catch {}
+
+    return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
   },
 
   // 3. Top Rated All-Time
@@ -311,12 +385,29 @@ export const anilistClient = {
         }
       }
     `
+    // Tier 1: AniList
     try {
       const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage }, 30 * 60 * 1000)
-      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
-    } catch {
-      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+      if (data?.Page?.media && data.Page.media.length > 0) {
+        return data.Page
+      }
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed getTopRatedAnime:', err)
     }
+
+    // Tier 2: Jikan
+    try {
+      const jikanData = await jikanFallback.getTopRatedAnime(page, perPage)
+      if (jikanData && jikanData.media.length > 0) return jikanData
+    } catch {}
+
+    // Tier 3: Kitsu
+    try {
+      const kitsuData = await kitsuFallback.getTopRatedAnime(page, perPage)
+      if (kitsuData && kitsuData.media.length > 0) return kitsuData
+    } catch {}
+
+    return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
   },
 
   // 4. Currently Airing Anime
@@ -337,12 +428,29 @@ export const anilistClient = {
         }
       }
     `
+    // Tier 1: AniList
     try {
       const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage }, 15 * 60 * 1000)
-      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
-    } catch {
-      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+      if (data?.Page?.media && data.Page.media.length > 0) {
+        return data.Page
+      }
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed getCurrentlyAiringAnime:', err)
     }
+
+    // Tier 2: Jikan
+    try {
+      const jikanData = await jikanFallback.getCurrentlyAiringAnime(page, perPage)
+      if (jikanData && jikanData.media.length > 0) return jikanData
+    } catch {}
+
+    // Tier 3: Kitsu
+    try {
+      const kitsuData = await kitsuFallback.getCurrentlyAiringAnime(page, perPage)
+      if (kitsuData && kitsuData.media.length > 0) return kitsuData
+    } catch {}
+
+    return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
   },
 
   // 5. Seasonal Picks
@@ -367,17 +475,37 @@ export const anilistClient = {
         }
       }
     `
+    // Tier 1: AniList
     try {
-      const data = await fetchAniList<{ Page: AniListPageResponse }>(query, {
-        page,
-        perPage,
-        season: activeSeason,
-        seasonYear: activeYear,
-      }, 30 * 60 * 1000)
-      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
-    } catch {
-      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+      const data = await fetchAniList<{ Page: AniListPageResponse }>(
+        query,
+        {
+          page,
+          perPage,
+          season: activeSeason,
+          seasonYear: activeYear,
+        },
+        30 * 60 * 1000
+      )
+      if (data?.Page?.media && data.Page.media.length > 0) {
+        return data.Page
+      }
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed getSeasonalAnime:', err)
     }
+
+    // Tier 2 & 3: Jikan / Kitsu
+    try {
+      const jikanData = await jikanFallback.getCurrentlyAiringAnime(page, perPage)
+      if (jikanData && jikanData.media.length > 0) return jikanData
+    } catch {}
+
+    try {
+      const kitsuData = await kitsuFallback.getCurrentlyAiringAnime(page, perPage)
+      if (kitsuData && kitsuData.media.length > 0) return kitsuData
+    } catch {}
+
+    return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
   },
 
   // 6. Anime by Genre with Multi-filter
@@ -420,11 +548,31 @@ export const anilistClient = {
       variables.status = params.status
     }
 
+    // Tier 1: AniList
     try {
       const data = await fetchAniList<{ Page: AniListPageResponse }>(query, variables, 15 * 60 * 1000)
-      return data?.Page || { pageInfo: { total: 0, currentPage: params.page || 1, lastPage: 1, hasNextPage: false, perPage: params.perPage || 24 }, media: [] }
-    } catch {
-      return { pageInfo: { total: 0, currentPage: params.page || 1, lastPage: 1, hasNextPage: false, perPage: params.perPage || 24 }, media: [] }
+      if (data?.Page?.media && data.Page.media.length > 0) {
+        return data.Page
+      }
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed getAnimeByGenre:', err)
+    }
+
+    // Tier 3: Kitsu Genre Fallback
+    try {
+      const kitsuData = await kitsuFallback.getAnimeByGenre(params.genre || '', params.page || 1, params.perPage || 24)
+      if (kitsuData && kitsuData.media.length > 0) return kitsuData
+    } catch {}
+
+    return {
+      pageInfo: {
+        total: 0,
+        currentPage: params.page || 1,
+        lastPage: 1,
+        hasNextPage: false,
+        perPage: params.perPage || 24,
+      },
+      media: [],
     }
   },
 
@@ -504,12 +652,27 @@ export const anilistClient = {
         }
       }
     `
+    // Tier 1: AniList
     try {
       const data = await fetchAniList<{ Media: AniListMedia }>(query, { id }, 60 * 60 * 1000)
-      return data?.Media || null
-    } catch {
-      return null
+      if (data?.Media) return data.Media
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed getAnimeDetails:', err)
     }
+
+    // Tier 2: Jikan Details
+    try {
+      const jikanDetail = await jikanFallback.getAnimeDetails(id)
+      if (jikanDetail) return jikanDetail
+    } catch {}
+
+    // Tier 3: Kitsu Details
+    try {
+      const kitsuDetail = await kitsuFallback.getAnimeDetails(id)
+      if (kitsuDetail) return kitsuDetail
+    } catch {}
+
+    return null
   },
 
   // 8. Search Anime
@@ -530,11 +693,28 @@ export const anilistClient = {
         }
       }
     `
+    // Tier 1: AniList Search
     try {
       const data = await fetchAniList<{ Page: AniListPageResponse }>(query, { page, perPage, search }, 30 * 60 * 1000)
-      return data?.Page || { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
-    } catch {
-      return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
+      if (data?.Page?.media && data.Page.media.length > 0) {
+        return data.Page
+      }
+    } catch (err) {
+      console.warn('[AniList Tier 1] Failed searchAnime:', err)
     }
+
+    // Tier 2: Jikan Search
+    try {
+      const jikanData = await jikanFallback.searchAnime(search, page, perPage)
+      if (jikanData && jikanData.media.length > 0) return jikanData
+    } catch {}
+
+    // Tier 3: Kitsu Search
+    try {
+      const kitsuData = await kitsuFallback.searchAnime(search, page, perPage)
+      if (kitsuData && kitsuData.media.length > 0) return kitsuData
+    } catch {}
+
+    return { pageInfo: { total: 0, currentPage: page, lastPage: 1, hasNextPage: false, perPage }, media: [] }
   },
 }
