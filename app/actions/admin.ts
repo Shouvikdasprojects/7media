@@ -16,21 +16,10 @@ import {
 import { eq, desc, sql, like, or, and } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
-import nodemailer from 'nodemailer'
+import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'shouvikdaswork@gmail.com'
-
-// Nodemailer SMTP Transporter
-function getMailTransporter() {
-  const user = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
-  const pass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || ''
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass },
-  })
-}
 
 // Check if currently authenticated user is Admin
 export async function verifyIsAdmin() {
@@ -202,13 +191,10 @@ export async function replyToContactMessage(params: { id: string; replyText: str
       return { success: false, error: 'Contact message not found.' }
     }
 
-    // Send email to the user via 7media.support@gmail.com
-    const transporter = getMailTransporter()
-    const senderEmail = process.env.SMTP_USER || '7media.support@gmail.com'
-
-    await transporter.sendMail({
-      from: `"7MEDIA Support Desk" <${senderEmail}>`,
+    // Send email to the user via 7MEDIA Mail Engine
+    const emailResult = await sendEmail({
       to: msg.email,
+      fromName: '7MEDIA Support Desk',
       subject: `Re: [${msg.topic}] Your 7MEDIA Support Inquiry`,
       text: `Hello ${msg.name},\n\nThank you for reaching out to 7MEDIA.\n\n${replyText}\n\nBest regards,\n7MEDIA Team\nsupport: 7media.support@gmail.com`,
       html: `
@@ -228,6 +214,10 @@ export async function replyToContactMessage(params: { id: string; replyText: str
         </div>
       `,
     })
+
+    if (!emailResult.success) {
+      return { success: false, error: emailResult.error || 'Failed to dispatch email reply' }
+    }
 
     // Update database status
     await db
