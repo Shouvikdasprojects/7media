@@ -240,7 +240,7 @@ export async function requestPasswordReset(email: string) {
 
     // Generate a secure 6-digit verification code
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString()
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
 
     // Delete older reset codes for this email
     await db.delete(verification).where(eq(verification.identifier, cleanEmail))
@@ -276,7 +276,7 @@ export async function requestPasswordReset(email: string) {
             </div>
             
             <p style="font-size: 12px; color: #71717a; line-height: 1.5;">
-              This code will expire in <strong>5 minutes</strong>. If you did not request this password reset, please ignore this email. Your password will remain safe and unchanged.
+              This code will expire in <strong>15 minutes</strong>. If you did not request this password reset, please ignore this email. Your password will remain safe and unchanged.
             </p>
           </div>
           <div style="border-top: 1px solid rgba(255,255,255,0.06); padding: 16px 24px; text-align: center; font-size: 11px; color: #52525b;">
@@ -400,7 +400,7 @@ export async function requestAccountDeletionOtp(data?: { targetEmail?: string })
   try {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
     const otpIdentifier = `delete-account-otp:${currentUser.id}`
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 mins
 
     await db.delete(verification).where(eq(verification.identifier, otpIdentifier))
     await db.insert(verification).values({
@@ -432,7 +432,7 @@ export async function requestAccountDeletionOtp(data?: { targetEmail?: string })
             </div>
             
             <p style="font-size: 12px; color: #71717a; line-height: 1.5;">
-              This code will expire in <strong>5 minutes</strong>. If you did not request this deletion, please change your account password immediately to secure your account.
+              This code will expire in <strong>15 minutes</strong>. If you did not request this deletion, please change your account password immediately to secure your account.
             </p>
           </div>
           <div style="border-top: 1px solid rgba(255,255,255,0.06); padding: 16px 24px; text-align: center; font-size: 11px; color: #52525b;">
@@ -549,7 +549,7 @@ export async function requestSignupOtp(data: { name: string; email: string; pass
     // 2. Generate 6-digit numeric OTP code
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
     const otpIdentifier = `signup-otp:${cleanEmail}`
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
 
     // 3. Remove older pending OTPs for this email
     await db.delete(verification).where(eq(verification.identifier, otpIdentifier))
@@ -584,7 +584,7 @@ export async function requestSignupOtp(data: { name: string; email: string; pass
             </div>
             
             <p style="font-size: 12px; color: #71717a; line-height: 1.5;">
-              This code will expire in <strong>5 minutes</strong>. If you did not sign up for a 7MEDIA account, please disregard this message.
+              This code will expire in <strong>15 minutes</strong>. If you did not sign up for a 7MEDIA account, please disregard this message.
             </p>
           </div>
           <div style="border-top: 1px solid rgba(255,255,255,0.06); padding: 16px 24px; text-align: center; font-size: 11px; color: #52525b;">

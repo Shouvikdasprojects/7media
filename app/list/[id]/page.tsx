@@ -19,6 +19,7 @@ import {
   Flame,
   Copy,
   MessageCircle,
+  Twitter,
   Send,
   Globe2,
   ExternalLink,
@@ -87,7 +88,7 @@ export default function PublicListPage({
     },
     {
       name: 'X (Twitter)',
-      icon: Globe2,
+      icon: Twitter,
       color: 'bg-neutral-800 hover:bg-neutral-700 text-white',
       url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
     },

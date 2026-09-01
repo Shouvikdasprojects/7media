@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { tmdbClient } from '@/lib/tmdb/client'
+import { getMovieDetails, getShowDetails } from '@/lib/tmdb/client'
 import { getSiteUrl } from '@/lib/site'
 
 const siteUrl = getSiteUrl()
@@ -14,8 +14,8 @@ export async function generateMetadata({
 
   try {
     const data: any = isMovie
-      ? await tmdbClient.getMovieDetails(parseInt(id))
-      : await tmdbClient.getShowDetails(parseInt(id))
+      ? await getMovieDetails(parseInt(id))
+      : await getShowDetails(parseInt(id))
 
     if (!data || (!data.title && !data.name)) {
       return {

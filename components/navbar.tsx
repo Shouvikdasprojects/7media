@@ -608,113 +608,24 @@ export function Navbar() {
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-white/10 bg-black/95 backdrop-blur-2xl p-4 animate-in fade-in max-h-[85vh] overflow-y-auto scrollbar-hide">
-            <div className="flex flex-col gap-2">
-              
-              {/* TOP AUTH / USER CARD FOR MOBILE */}
-              {session?.user ? (
-                /* LOGGED IN USER CARD */
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0 overflow-hidden">
-                      {avatar && avatar.startsWith('http') ? (
-                        <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : avatar && AVATAR_MAP[avatar] ? (
-                        <span className="text-xl">{AVATAR_MAP[avatar]}</span>
-                      ) : (
-                        <User size={20} className="text-primary" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="truncate text-xs font-bold text-white">
-                          {session.user.name ?? '7MEDIA Member'}
-                        </p>
-                        {isAdminUser && (
-                          <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                            Admin
-                          </span>
-                        )}
-                      </div>
-                      <p className="truncate text-[10px] text-white/50">{session.user.email}</p>
-                    </div>
-                  </div>
-                  <Link
-                    href="/profile"
-                    onClick={() => setMobileOpen(false)}
-                    className="shrink-0 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/10 active:scale-95 transition"
-                  >
-                    Profile
-                  </Link>
-                </div>
-              ) : (
-                /* GUEST AUTH BANNER WITH DUAL SIGN IN / SIGN UP BUTTONS */
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-primary/25 via-rose-500/10 to-black/80 border border-primary/30 shadow-[0_4px_25px_rgba(229,9,20,0.15)]">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                    <p className="text-xs font-bold text-white uppercase tracking-wider">
-                      Welcome to 7MEDIA
-                    </p>
-                  </div>
-                  <p className="text-[11px] text-white/70 mb-3 leading-relaxed">
-                    Sign in to sync your watchlists, track anime progress, and chat in the community.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Link
-                      href="/sign-in"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-lg shadow-primary/30 hover:opacity-90 active:scale-95 transition text-center"
-                    >
-                      <User size={14} /> <span>{t('signIn') || 'Sign In'}</span>
-                    </Link>
-                    <Link
-                      href="/sign-up"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/15 active:scale-95 transition text-center"
-                    >
-                      <Sparkles size={14} className="text-accent" /> <span>Sign Up</span>
-                    </Link>
-                  </div>
-                </div>
-              )}
-
-              {/* ADMIN SHORTCUT (IF ADMIN) */}
-              {isAdminUser && (
+          <div className="border-t border-white/10 bg-black/95 p-4 animate-in fade-in">
+            <div className="flex flex-col gap-1">
+              {navItems.map((item) => (
                 <Link
-                  href="/admin"
+                  key={item.href}
+                  href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-400 font-bold text-xs shadow-sm active:scale-95 transition mt-0.5"
+                  className={
+                    'px-3.5 py-2.5 text-xs font-bold rounded-2xl transition-all ' +
+                    (isActive(item.href)
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white')
+                  }
                 >
-                  <span className="flex items-center gap-2">
-                    <ShieldCheck size={16} /> <span>Admin Control Center</span>
-                  </span>
-                  <span className="text-[10px] font-mono uppercase bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
-                    Live
-                  </span>
+                  {item.label}
                 </Link>
-              )}
-
-              {/* NAVIGATION LINKS */}
-              <div className="flex flex-col gap-0.5 pt-1">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={
-                      'px-3.5 py-2.5 text-xs font-bold rounded-2xl transition-all ' +
-                      (isActive(item.href)
-                        ? 'bg-white/15 text-white'
-                        : 'text-white/70 hover:bg-white/10 hover:text-white')
-                    }
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-
-              {/* FEATURE GRID */}
-              <div className="grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
+              ))}
+              <div className="mt-2 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
                 <Link
                   href="/profile"
                   onClick={() => setMobileOpen(false)}
@@ -771,31 +682,10 @@ export function Navbar() {
                 >
                   <Languages size={15} /> {language}
                 </button>
-                <Link
-                  href="/faq"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white"
-                >
-                  <CircleHelp size={15} /> FAQ
-                </Link>
               </div>
 
-              {/* LOGOUT BUTTON IN MOBILE DRAWER IF LOGGED IN */}
-              {session?.user && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileOpen(false)
-                    handleLogout()
-                  }}
-                  className="flex w-full items-center justify-center gap-2 mt-1 py-2 px-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-xs hover:bg-red-500/20 active:scale-95 transition"
-                >
-                  <LogOut size={15} /> {t('signOut')}
-                </button>
-              )}
-
               {/* Creator Card in Mobile Drawer */}
-              <div className="mt-2 p-3 rounded-2xl bg-gradient-to-r from-primary/20 via-rose-500/10 to-amber-500/10 border border-primary/25 text-center">
+              <div className="mt-3 p-3 rounded-2xl bg-gradient-to-r from-primary/20 via-rose-500/10 to-amber-500/10 border border-primary/25 text-center">
                 <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-accent uppercase tracking-wider mb-0.5">
                   <Sparkles size={11} /> Architect &amp; Developer
                 </div>

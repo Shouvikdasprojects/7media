@@ -23,8 +23,7 @@ import {
   Flame,
   Heart,
   ChevronDown,
-  Check,
-  Share2
+  Check
 } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
@@ -849,20 +848,10 @@ export default function MyListPage() {
               </button>
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <Link
-                href={`/list/${activeCatalog}`}
-                target="_blank"
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-900 border border-white/15 text-white hover:bg-zinc-800 text-xs font-bold uppercase tracking-wider transition active:scale-95 shadow-sm"
-              >
-                <Share2 size={13} className="text-emerald-400" />
-                <span>Share Playlist</span>
-              </Link>
-              <p className="text-xs text-zinc-400 font-semibold px-1">
-                Showing <strong className="text-emerald-400">{catalogItems.length}</strong> titles in{' '}
-                <strong className="text-white">{currentCatalogObj.name}</strong>
-              </p>
-            </div>
+            <p className="text-xs text-zinc-400 font-semibold px-1">
+              Showing <strong className="text-emerald-400">{catalogItems.length}</strong> titles in{' '}
+              <strong className="text-white">{currentCatalogObj.name}</strong>
+            </p>
           </div>
         </section>
 

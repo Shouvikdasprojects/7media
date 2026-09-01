@@ -62,7 +62,7 @@ export function Footer() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
             {/* Live Operational Status Badge */}
             <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold shadow-sm">
               <span className="relative flex h-2.5 w-2.5">
@@ -71,6 +71,15 @@ export function Footer() {
               </span>
               <span>All Systems Operational</span>
             </div>
+
+            {/* Official Support Email Pill */}
+            <a
+              href="mailto:7media.support@gmail.com"
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-secondary/80 hover:bg-secondary border border-border text-foreground text-xs font-bold transition-all shadow-sm cursor-pointer"
+            >
+              <Mail size={14} className="text-primary" />
+              <span>7media.support@gmail.com</span>
+            </a>
           </div>
         </div>
 
