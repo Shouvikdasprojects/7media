@@ -118,67 +118,50 @@ export async function POST(req: NextRequest) {
     const safeSubject = escapeHtml(cleanSubject)
     const safeMessage = escapeHtml(cleanMessage)
 
-    if (smtpPass) {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass.replace(/\s+/g, ''),
-        },
-      })
-
-      const mailOptions = {
-        from: `"7MEDIA Contact Desk" <${smtpUser}>`,
-        to: adminEmail,
-        replyTo: cleanEmail,
-        subject: `[7MEDIA Inquiry] ${cleanSubject} - From ${cleanName}`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-            <div style="background: #e50914; padding: 20px 24px;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 1px;">7MEDIA CONTACT DESK</h1>
+    // 6. Non-blocking Email Delivery via unified sendEmail
+    const { sendEmail } = await import('@/lib/email')
+    const emailResult = await sendEmail({
+      to: adminEmail,
+      subject: `[7MEDIA Inquiry] ${cleanSubject} - From ${cleanName}`,
+      fromName: '7MEDIA Contact Desk',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+          <div style="background: #e50914; padding: 20px 24px;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 1px;">7MEDIA CONTACT DESK</h1>
+          </div>
+          <div style="padding: 24px;">
+            <p style="font-size: 13px; color: #a1a1aa; margin-top: 0;">You have received a new verified inquiry from the 7MEDIA contact desk.</p>
+            
+            <div style="background: #18181b; padding: 16px; border-radius: 12px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.06);">
+              <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Sender Name:</strong> ${safeName}</p>
+              <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Sender Email:</strong> <a href="mailto:${safeEmail}" style="color: #e50914; text-decoration: none;">${safeEmail}</a></p>
+              <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Topic:</strong> ${safeSubject}</p>
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #71717a;"><strong>Timestamp:</strong> ${new Date().toUTCString()}</p>
+              <p style="margin: 0; font-size: 12px; color: #71717a;"><strong>Origin IP:</strong> ${escapeHtml(clientIp)}</p>
             </div>
-            <div style="padding: 24px;">
-              <p style="font-size: 13px; color: #a1a1aa; margin-top: 0;">You have received a new verified inquiry from the 7MEDIA contact desk.</p>
-              
-              <div style="background: #18181b; padding: 16px; border-radius: 12px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.06);">
-                <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Sender Name:</strong> ${safeName}</p>
-                <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Sender Email:</strong> <a href="mailto:${safeEmail}" style="color: #e50914; text-decoration: none;">${safeEmail}</a></p>
-                <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Topic:</strong> ${safeSubject}</p>
-                <p style="margin: 0 0 8px 0; font-size: 12px; color: #71717a;"><strong>Timestamp:</strong> ${new Date().toUTCString()}</p>
-                <p style="margin: 0; font-size: 12px; color: #71717a;"><strong>Origin IP:</strong> ${escapeHtml(clientIp)}</p>
-              </div>
 
-              <div style="margin-top: 20px;">
-                <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #e50914; margin-bottom: 8px;">Message:</h3>
-                <div style="background: #18181b; padding: 16px; border-radius: 12px; line-height: 1.6; font-size: 14px; white-space: pre-wrap; color: #e4e4e7; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="margin-top: 20px;">
+              <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #e50914; margin-bottom: 8px;">Message:</h3>
+              <div style="background: #18181b; padding: 16px; border-radius: 12px; line-height: 1.6; font-size: 14px; white-space: pre-wrap; color: #e4e4e7; border: 1px solid rgba(255,255,255,0.06);">
 ${safeMessage}
-                </div>
               </div>
+            </div>
 
-              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: #71717a; text-align: center;">
-                Click "Reply" to directly email the sender at <strong>${safeEmail}</strong>.
-              </div>
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: #71717a; text-align: center;">
+              Click "Reply" to directly email the sender at <strong>${safeEmail}</strong>.
             </div>
           </div>
-        `,
-      }
-
-      await transporter.sendMail(mailOptions)
-      return NextResponse.json({ success: true, delivered: true })
-    }
-
-    // Safe development console logger
-    console.log('=== [7MEDIA CONTACT DESK SUBMISSION (DEV)] ===')
-    console.log(`From: ${cleanName} <${cleanEmail}> [IP: ${clientIp}]`)
-    console.log(`Subject: ${cleanSubject}`)
-    console.log(`Routing Destination: ${adminEmail}`)
-    console.log(`Message Length: ${cleanMessage.length} chars`)
-    console.log('==============================================')
+        </div>
+      `,
+    }).catch((err) => {
+      console.warn('[Contact Email Non-fatal Warning]', err?.message || err)
+      return { success: false }
+    })
 
     return NextResponse.json({
       success: true,
-      delivered: false,
-      notice: 'Inquiry received. Configure GMAIL_APP_PASSWORD in .env for automated SMTP dispatch.',
+      delivered: Boolean(emailResult.success),
+      message: 'Your inquiry has been received. Our team will review it shortly.',
     })
   } catch (err: any) {
     // Shield internal stack trace from client JSON response
