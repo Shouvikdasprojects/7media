@@ -5,15 +5,21 @@ import * as schema from '@/lib/db/schema'
 
 const baseURL = process.env.BETTER_AUTH_URL
   ? process.env.BETTER_AUTH_URL
-  : process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.V0_RUNTIME_URL || 'http://localhost:3000'
+  : process.env.RENDER_EXTERNAL_URL
+    ? process.env.RENDER_EXTERNAL_URL
+    : process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.V0_RUNTIME_URL || 'http://localhost:3000'
 
 const trustedOrigins = [
   baseURL,
   'http://localhost:3000',
+  'https://7media.pages.dev',
+  ...(process.env.RENDER_EXTERNAL_URL && process.env.RENDER_EXTERNAL_URL !== baseURL
+    ? [process.env.RENDER_EXTERNAL_URL]
+    : []),
   ...(process.env.V0_RUNTIME_URL && process.env.V0_RUNTIME_URL !== baseURL
     ? [process.env.V0_RUNTIME_URL]
     : []),
