@@ -1,21 +1,11 @@
 import nodemailer from 'nodemailer'
 import dns from 'dns'
 
-// Force IPv4 first in Node.js DNS resolution to eliminate Render / Linux container IPv6 ENETUNREACH errors
+// Force IPv4 first in Node.js DNS resolution globally
 if (dns.setDefaultResultOrder) {
   try {
     dns.setDefaultResultOrder('ipv4first')
   } catch {}
-}
-
-// Custom IPv4 lookup function that forces family: 4 and resolves ONLY IPv4 addresses
-const ipv4Lookup = (hostname: string, _options: any, callback: (err: NodeJS.ErrnoException | null, address?: string, family?: number) => void) => {
-  dns.lookup(hostname, { family: 4 }, (err, address) => {
-    if (err) {
-      return callback(err)
-    }
-    callback(null, address, 4)
-  })
 }
 
 interface SendEmailParams {
@@ -34,6 +24,21 @@ function stripHtml(html: string): string {
     .trim()
 }
 
+/**
+ * Resolves a hostname strictly to IPv4 address to eliminate Linux/Render IPv6 ENETUNREACH errors
+ */
+async function resolveIPv4(hostname: string): Promise<string> {
+  try {
+    const addresses = await dns.promises.resolve4(hostname)
+    if (addresses && addresses.length > 0) {
+      return addresses[0]
+    }
+  } catch (err: any) {
+    console.warn(`[Email DNS] resolve4 fallback for ${hostname}:`, err?.message || err)
+  }
+  return hostname
+}
+
 export async function sendEmail({
   to,
   subject,
@@ -43,15 +48,47 @@ export async function sendEmail({
 }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
+  const resendApiKey = process.env.RESEND_API_KEY
 
+  const plainText = text || stripHtml(html)
+
+  // 1. TIER 1: Resend HTTP REST API (HTTPS Port 443 — 100% bypasses any Cloud/Render raw SMTP port blocks)
+  if (resendApiKey) {
+    try {
+      console.log(`[Email] Dispatching via Resend HTTPS API to ${to}...`)
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey.trim()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: `${fromName} <onboarding@resend.dev>`,
+          to: [to],
+          subject,
+          html,
+          text: plainText,
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.id) {
+        console.log(`[Email] Resend delivery successful! Message ID: ${data.id}`)
+        return { success: true }
+      }
+      console.warn(`[Email] Resend API response:`, data)
+    } catch (resendErr: any) {
+      console.warn(`[Email] Resend API failed, trying direct IPv4 SMTP:`, resendErr?.message)
+    }
+  }
+
+  // 2. TIER 2: Direct IPv4 Gmail SMTP on Port 465 (SSL)
   if (!smtpPass) {
-    console.warn('[Email] SMTP_PASS or GMAIL_APP_PASSWORD not set in environment.')
+    console.warn('[Email] Neither RESEND_API_KEY nor GMAIL_APP_PASSWORD is set in environment.')
     return { success: false, error: 'Email delivery service is currently not configured on this server.' }
   }
 
   const cleanPass = smtpPass.replace(/\s+/g, '')
-  const plainText = text || stripHtml(html)
-
   const mailPayload = {
     from: `"${fromName}" <${smtpUser}>`,
     to,
@@ -66,15 +103,18 @@ export async function sendEmail({
     },
   }
 
-  // 1. Primary Strategy: Port 465 (Direct SSL) with explicit IPv4 custom lookup & TLS SNI
+  // Strictly pre-resolve IPv4 so Node / glibc NEVER touches IPv6
+  const targetIpv4 = await resolveIPv4('smtp.gmail.com')
+
   try {
+    console.log(`[Email] Connecting to IPv4 ${targetIpv4}:465 (SSL)...`)
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
+      host: targetIpv4,
       port: 465,
       secure: true,
-      lookup: ipv4Lookup,
       tls: {
         servername: 'smtp.gmail.com',
+        rejectUnauthorized: false,
       },
       auth: {
         user: smtpUser,
@@ -86,21 +126,21 @@ export async function sendEmail({
     } as any)
 
     await transporter.sendMail(mailPayload)
-
+    console.log(`[Email] Port 465 (IPv4) delivery successful to ${to}!`)
     return { success: true }
   } catch (primaryErr: any) {
-    console.warn('[Email] Port 465 delivery attempt failed, trying fallback Port 587 (TLS)...', primaryErr?.message || primaryErr)
+    console.warn('[Email] Port 465 (IPv4) attempt failed, trying Port 587 (STARTTLS)...', primaryErr?.message || primaryErr)
 
-    // 2. Secondary Strategy: Port 587 (STARTTLS) with explicit IPv4 custom lookup & TLS SNI
+    // 3. TIER 3: Direct IPv4 Gmail SMTP on Port 587 (STARTTLS)
     try {
       const fallbackTransporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
+        host: targetIpv4,
         port: 587,
         secure: false,
         requireTLS: true,
-        lookup: ipv4Lookup,
         tls: {
           servername: 'smtp.gmail.com',
+          rejectUnauthorized: false,
         },
         auth: {
           user: smtpUser,
@@ -112,7 +152,7 @@ export async function sendEmail({
       } as any)
 
       await fallbackTransporter.sendMail(mailPayload)
-
+      console.log(`[Email] Port 587 (IPv4) delivery successful to ${to}!`)
       return { success: true }
     } catch (fallbackErr: any) {
       console.error('[Email] All SMTP delivery attempts failed:', fallbackErr?.message || fallbackErr)
