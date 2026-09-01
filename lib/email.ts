@@ -49,10 +49,12 @@ export async function sendEmail({
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
   const resendApiKey = process.env.RESEND_API_KEY
+  const brevoApiKey = process.env.BREVO_API_KEY
+  const sendgridApiKey = process.env.SENDGRID_API_KEY
 
   const plainText = text || stripHtml(html)
 
-  // 1. TIER 1: Resend HTTP REST API (HTTPS Port 443 — 100% bypasses any Cloud/Render raw SMTP port blocks)
+  // 1. TIER 1: Resend HTTP REST API (HTTPS Port 443 — 100% Cloudflare Pages & Edge compatible)
   if (resendApiKey) {
     try {
       console.log(`[Email] Dispatching via Resend HTTPS API to ${to}...`)
@@ -78,14 +80,78 @@ export async function sendEmail({
       }
       console.warn(`[Email] Resend API response:`, data)
     } catch (resendErr: any) {
-      console.warn(`[Email] Resend API failed, trying direct IPv4 SMTP:`, resendErr?.message)
+      console.warn(`[Email] Resend API failed, trying next provider:`, resendErr?.message)
     }
   }
 
-  // 2. TIER 2: Direct IPv4 Gmail SMTP on Port 465 (SSL)
+  // 2. TIER 2: Brevo (Sendinblue) HTTP REST API (HTTPS Port 443)
+  if (brevoApiKey) {
+    try {
+      console.log(`[Email] Dispatching via Brevo HTTPS API to ${to}...`)
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoApiKey.trim(),
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: fromName, email: smtpUser },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+          textContent: plainText,
+        }),
+      })
+
+      if (res.ok) {
+        console.log(`[Email] Brevo delivery successful to ${to}!`)
+        return { success: true }
+      }
+      const data = await res.json()
+      console.warn(`[Email] Brevo API error response:`, data)
+    } catch (brevoErr: any) {
+      console.warn(`[Email] Brevo API failed, trying next provider:`, brevoErr?.message)
+    }
+  }
+
+  // 3. TIER 3: SendGrid HTTP REST API (HTTPS Port 443)
+  if (sendgridApiKey) {
+    try {
+      console.log(`[Email] Dispatching via SendGrid HTTPS API to ${to}...`)
+      const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${sendgridApiKey.trim()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: smtpUser, name: fromName },
+          subject,
+          content: [
+            { type: 'text/plain', value: plainText },
+            { type: 'text/html', value: html },
+          ],
+        }),
+      })
+
+      if (res.ok || res.status === 202) {
+        console.log(`[Email] SendGrid delivery successful to ${to}!`)
+        return { success: true }
+      }
+    } catch (sendgridErr: any) {
+      console.warn(`[Email] SendGrid API failed, trying SMTP:`, sendgridErr?.message)
+    }
+  }
+
+  // 4. TIER 4: Direct IPv4 Gmail SMTP on Port 465 (SSL)
   if (!smtpPass) {
-    console.warn('[Email] Neither RESEND_API_KEY nor GMAIL_APP_PASSWORD is set in environment.')
-    return { success: false, error: 'Email delivery service is currently not configured on this server.' }
+    console.warn('[Email] No HTTP API Key (RESEND_API_KEY / BREVO_API_KEY) or GMAIL_APP_PASSWORD found.')
+    return {
+      success: false,
+      error: 'Email delivery is not configured. Please add a RESEND_API_KEY or BREVO_API_KEY to your environment.',
+    }
   }
 
   const cleanPass = smtpPass.replace(/\s+/g, '')
