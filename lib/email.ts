@@ -61,7 +61,7 @@ export async function sendEmail({
       const res = await fetch(gmailWebhookUrl.trim(), {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify({
           secret: process.env.GMAIL_WEBHOOK_SECRET || '7media-secure-key-2026',
@@ -72,15 +72,20 @@ export async function sendEmail({
           fromName,
           replyTo: replyTo || smtpUser,
         }),
+        redirect: 'follow',
       })
 
       if (res.ok) {
-        const data = await res.json().catch(() => ({}))
+        const text = await res.text().catch(() => '')
+        let data: any = {}
+        try {
+          data = JSON.parse(text)
+        } catch {}
         if (data.success !== false) {
           console.log(`[Email] Google Webhook successfully delivered email to ${to}!`)
           return { success: true }
         }
-        console.warn('[Email] Google Webhook returned error:', data.error)
+        console.warn('[Email] Google Webhook returned error:', data.error || text)
       } else {
         const errText = await res.text().catch(() => '')
         console.warn(`[Email] Google Webhook HTTP ${res.status}:`, errText)
