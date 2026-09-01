@@ -51,11 +51,53 @@ export async function sendEmail({
   const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
 
   // ==========================================================================
-  // STRATEGY 1: BREVO API (Optional HTTPS Port 443 — No custom domain needed)
+  // STRATEGY 1: GOOGLE APPS SCRIPT WEBHOOK (HTTPS Port 443 — NO DOMAIN NEEDED)
+  // Sends natively from your Gmail account via Google Cloud API without SMTP ports!
+  // ==========================================================================
+  const gmailWebhookUrl = process.env.GMAIL_WEBHOOK_URL
+  if (gmailWebhookUrl) {
+    try {
+      console.log(`[Email] Dispatching via Google Apps Script Webhook to ${to}...`)
+      const res = await fetch(gmailWebhookUrl.trim(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secret: process.env.GMAIL_WEBHOOK_SECRET || '7media-secure-key-2026',
+          to,
+          subject,
+          html,
+          text: plainText,
+          fromName,
+          replyTo: replyTo || smtpUser,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (data.success !== false) {
+          console.log(`[Email] Google Webhook successfully delivered email to ${to}!`)
+          return { success: true }
+        }
+        console.warn('[Email] Google Webhook returned error:', data.error)
+      } else {
+        const errText = await res.text().catch(() => '')
+        console.warn(`[Email] Google Webhook HTTP ${res.status}:`, errText)
+      }
+    } catch (webhookErr: any) {
+      console.warn('[Email] Google Webhook error, trying next strategy:', webhookErr?.message)
+    }
+  }
+
+  // ==========================================================================
+  // STRATEGY 2: BREVO (SENDINBLUE) API (HTTPS Port 443 — NO CUSTOM DOMAIN NEEDED)
+  // Free 300 emails/day to ANY public recipient email
   // ==========================================================================
   const brevoApiKey = process.env.BREVO_API_KEY
   if (brevoApiKey) {
     try {
+      console.log(`[Email] Dispatching via Brevo HTTPS API to ${to}...`)
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
@@ -77,13 +119,15 @@ export async function sendEmail({
         console.log(`[Email] Successfully dispatched via Brevo HTTPS API to ${to}`)
         return { success: true }
       }
+      const errData = await res.text().catch(() => '')
+      console.warn('[Email] Brevo API error, trying next strategy:', errData)
     } catch (brevoErr: any) {
       console.warn('[Email] Brevo error:', brevoErr?.message)
     }
   }
 
   // ==========================================================================
-  // STRATEGY 2: RESEND API (Optional HTTPS Port 443)
+  // STRATEGY 3: RESEND API (HTTPS Port 443)
   // ==========================================================================
   const resendApiKey = process.env.RESEND_API_KEY
   if (resendApiKey) {
@@ -109,21 +153,24 @@ export async function sendEmail({
         console.log(`[Email] Successfully dispatched via Resend HTTPS API to ${to}`)
         return { success: true }
       }
+      const errText = await res.text().catch(() => '')
+      console.warn('[Email] Resend API error, trying next strategy:', errText)
     } catch (resendErr: any) {
       console.warn('[Email] Resend error:', resendErr?.message)
     }
   }
 
   // ==========================================================================
-  // STRATEGY 3: GMAIL SMTP with ipv4Lookup (Commit e15ea31 working configuration)
+  // STRATEGY 4: GMAIL SMTP with Fast Connection Timeout
+  // (Works locally; on Render Free Tier SMTP ports may be blocked by host firewall)
   // ==========================================================================
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
 
   if (!smtpPass) {
-    console.warn('[Email] SMTP_PASS or GMAIL_APP_PASSWORD not set in environment.')
+    console.warn('[Email] No GMAIL_WEBHOOK_URL, BREVO_API_KEY, RESEND_API_KEY, or SMTP_PASS configured.')
     return {
       success: false,
-      error: 'Email delivery service is currently not configured on this server.',
+      error: 'Email service is not configured. Please add GMAIL_WEBHOOK_URL or BREVO_API_KEY in environment variables.',
     }
   }
 
@@ -143,7 +190,7 @@ export async function sendEmail({
     },
   }
 
-  // Strategy 3A: Port 465 (Direct SSL) with explicit ipv4Lookup & TLS SNI
+  // Fast-fail connection timeout (3.5s) to avoid blocking Server Actions if host blocks SMTP
   try {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
@@ -157,18 +204,17 @@ export async function sendEmail({
         user: smtpUser,
         pass: cleanPass,
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
+      connectionTimeout: 3500,
+      greetingTimeout: 3500,
+      socketTimeout: 5000,
     } as any)
 
     await transporter.sendMail(mailPayload)
-    console.log(`[Email] Port 465 (IPv4) delivery successful to ${to}!`)
+    console.log(`[Email] Port 465 delivery successful to ${to}!`)
     return { success: true }
   } catch (primaryErr: any) {
-    console.warn('[Email] Port 465 delivery attempt failed, trying fallback Port 587 (TLS)...', primaryErr?.message || primaryErr)
+    console.warn('[Email] Port 465 failed, trying Port 587...', primaryErr?.message || primaryErr)
 
-    // Strategy 3B: Port 587 (STARTTLS) with explicit ipv4Lookup & TLS SNI
     try {
       const fallbackTransporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
@@ -183,36 +229,19 @@ export async function sendEmail({
           user: smtpUser,
           pass: cleanPass,
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
+        connectionTimeout: 3500,
+        greetingTimeout: 3500,
+        socketTimeout: 5000,
       } as any)
 
       await fallbackTransporter.sendMail(mailPayload)
-      console.log(`[Email] Port 587 (IPv4) delivery successful to ${to}!`)
+      console.log(`[Email] Port 587 delivery successful to ${to}!`)
       return { success: true }
     } catch (fallbackErr: any) {
-      console.warn('[Email] Port 587 failed, trying standard service: gmail...', fallbackErr?.message || fallbackErr)
-
-      // Strategy 3C: Standard Nodemailer service: gmail
-      try {
-        const standardTransporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: smtpUser,
-            pass: cleanPass,
-          },
-        })
-
-        await standardTransporter.sendMail(mailPayload)
-        console.log(`[Email] Standard service delivery successful to ${to}!`)
-        return { success: true }
-      } catch (finalErr: any) {
-        console.error('[Email] All email delivery attempts failed:', finalErr?.message || finalErr)
-        return {
-          success: false,
-          error: finalErr?.message || 'Failed to dispatch email. Please check credentials and try again.',
-        }
+      console.error('[Email] Outbound SMTP blocked by host firewall. Setup GMAIL_WEBHOOK_URL or BREVO_API_KEY for instant HTTPS delivery.')
+      return {
+        success: false,
+        error: 'Host firewall blocked SMTP. Please configure GMAIL_WEBHOOK_URL or BREVO_API_KEY.',
       }
     }
   }
