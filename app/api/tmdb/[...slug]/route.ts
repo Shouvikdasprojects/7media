@@ -2,6 +2,19 @@ import { tmdbClient } from '@/lib/tmdb/client'
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 
+// Cloudflare Edge & Browser Caching Headers
+const CACHE_HEADERS_STATIC = {
+  'Cache-Control': 'public, max-age=1800, s-maxage=3600, stale-while-revalidate=86400',
+  'CDN-Cache-Control': 'max-age=3600',
+  'Cloudflare-CDN-Cache-Control': 'max-age=3600',
+}
+
+const CACHE_HEADERS_DYNAMIC = {
+  'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600',
+  'CDN-Cache-Control': 'max-age=600',
+  'Cloudflare-CDN-Cache-Control': 'max-age=600',
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string[] }> }
@@ -30,7 +43,7 @@ export async function GET(
       const timeWindow = searchParams.get('timeWindow') === 'day' ? 'day' : 'week'
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getTrendingMovies(timeWindow, page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/trending/shows or /api/tmdb/trending/tv or /api/tmdb/trending/show
@@ -38,63 +51,63 @@ export async function GET(
       const timeWindow = searchParams.get('timeWindow') === 'day' ? 'day' : 'week'
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getTrendingShows(timeWindow, page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/popular/movies
     if (slug[0] === 'popular' && slug[1] === 'movies') {
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getPopularMovies(page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/popular/shows
     if (slug[0] === 'popular' && slug[1] === 'shows') {
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getPopularShows(page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/top-rated/movies
     if (slug[0] === 'top-rated' && slug[1] === 'movies') {
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getTopRatedMovies(page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/top-rated/shows
     if (slug[0] === 'top-rated' && slug[1] === 'shows') {
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getTopRatedShows(page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/upcoming/movies
     if (slug[0] === 'upcoming' && (slug[1] === 'movies' || slug[1] === 'movie')) {
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getUpcomingMovies(page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/on-the-air/shows or /api/tmdb/on-the-air/tv
     if (slug[0] === 'on-the-air' && (slug[1] === 'shows' || slug[1] === 'tv' || slug[1] === 'show')) {
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getOnTheAirShows(page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/airing-today/shows or /api/tmdb/airing-today/tv
     if (slug[0] === 'airing-today' && (slug[1] === 'shows' || slug[1] === 'tv' || slug[1] === 'show')) {
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getAiringTodayShows(page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/now-playing/movies
     if (slug[0] === 'now-playing' && (slug[1] === 'movies' || slug[1] === 'movie')) {
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getNowPlayingMovies(page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/movie/:id
@@ -104,7 +117,7 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid movie ID' }, { status: 400 })
       }
       const data = await tmdbClient.getMovieDetails(movieId)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/show/:id
@@ -114,7 +127,7 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid show ID' }, { status: 400 })
       }
       const data = await tmdbClient.getShowDetails(showId)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/search
@@ -125,7 +138,7 @@ export async function GET(
       }
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.searchMulti(query, page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_DYNAMIC })
     }
 
     // /api/tmdb/discover/movies and /api/tmdb/discover/shows
@@ -156,11 +169,11 @@ export async function GET(
 
       if (slug[1] === 'movies' || slug[1] === 'movie') {
         const data = await tmdbClient.discoverMovies(params)
-        return NextResponse.json(data)
+        return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
       }
       if (slug[1] === 'shows' || slug[1] === 'tv' || slug[1] === 'show') {
         const data = await tmdbClient.discoverShows(params)
-        return NextResponse.json(data)
+        return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
       }
     }
 
@@ -169,7 +182,7 @@ export async function GET(
       const type = searchParams.get('type') === 'tv' ? 'tv' : 'movie'
       const region = (searchParams.get('region') || 'US').slice(0, 5)
       const data = await tmdbClient.getWatchProviders(type, region)
-      return NextResponse.json({ results: Array.isArray(data) ? data : [] })
+      return NextResponse.json({ results: Array.isArray(data) ? data : [] }, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/genres?type=movie|tv
@@ -177,7 +190,7 @@ export async function GET(
       const type = searchParams.get('type') === 'tv' ? 'tv' : 'movie'
       const data =
         type === 'tv' ? await tmdbClient.getShowGenres() : await tmdbClient.getMovieGenres()
-      return NextResponse.json({ genres: data })
+      return NextResponse.json({ genres: data }, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/season/:showId/:seasonNumber
@@ -188,7 +201,7 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid season parameters' }, { status: 400 })
       }
       const data = await tmdbClient.getSeasonDetails(showId, seasonNumber)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/movies/genre/:id
@@ -197,7 +210,7 @@ export async function GET(
       if (isNaN(genreId)) return NextResponse.json({ error: 'Invalid genre ID' }, { status: 400 })
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getMoviesByGenre(genreId, page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     // /api/tmdb/shows/genre/:id
@@ -206,7 +219,7 @@ export async function GET(
       if (isNaN(genreId)) return NextResponse.json({ error: 'Invalid genre ID' }, { status: 400 })
       const page = Math.max(1, Math.min(parseInt(searchParams.get('page') || '1', 10) || 1, 500))
       const data = await tmdbClient.getShowsByGenre(genreId, page)
-      return NextResponse.json(data)
+      return NextResponse.json(data, { headers: CACHE_HEADERS_STATIC })
     }
 
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
