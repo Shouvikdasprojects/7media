@@ -8,12 +8,13 @@ if (dns.setDefaultResultOrder) {
   } catch {}
 }
 
-interface SendEmailParams {
+export interface SendEmailParams {
   to: string
   subject: string
   html: string
   text?: string
   fromName?: string
+  replyTo?: string
 }
 
 function stripHtml(html: string): string {
@@ -60,6 +61,7 @@ export async function sendEmail({
   html,
   text,
   fromName = '7MEDIA',
+  replyTo,
 }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
   const plainText = text || stripHtml(html)
 
@@ -76,6 +78,7 @@ export async function sendEmail({
         body: JSON.stringify({
           from: `${fromName} <onboarding@resend.dev>`,
           to: [to],
+          reply_to: replyTo,
           subject,
           html,
           text: plainText,
@@ -106,7 +109,7 @@ export async function sendEmail({
   const mailPayload = {
     from: `"${fromName}" <${smtpUser}>`,
     to,
-    replyTo: smtpUser,
+    replyTo: replyTo || smtpUser,
     subject,
     text: plainText,
     html,

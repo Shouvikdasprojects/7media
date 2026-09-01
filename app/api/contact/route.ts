@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import nodemailer from 'nodemailer'
+import { sendEmail } from '@/lib/email'
 import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { contactMessages } from '@/lib/db/schema'
@@ -118,19 +118,11 @@ export async function POST(req: NextRequest) {
     const safeSubject = escapeHtml(cleanSubject)
     const safeMessage = escapeHtml(cleanMessage)
 
-    if (smtpPass) {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass.replace(/\s+/g, ''),
-        },
-      })
-
-      const mailOptions = {
-        from: `"7MEDIA Contact Desk" <${smtpUser}>`,
+    if (smtpPass || process.env.RESEND_API_KEY) {
+      const emailResult = await sendEmail({
         to: adminEmail,
         replyTo: cleanEmail,
+        fromName: '7MEDIA Contact Desk',
         subject: `[7MEDIA Inquiry] ${cleanSubject} - From ${cleanName}`,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
@@ -161,10 +153,11 @@ ${safeMessage}
             </div>
           </div>
         `,
-      }
+      })
 
-      await transporter.sendMail(mailOptions)
-      return NextResponse.json({ success: true, delivered: true })
+      if (emailResult.success) {
+        return NextResponse.json({ success: true, delivered: true })
+      }
     }
 
     // Safe development console logger
