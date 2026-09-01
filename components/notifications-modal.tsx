@@ -88,12 +88,13 @@ export function NotificationsModal({ isOpen, onClose, onUnreadChange }: Notifica
       fetch('/api/anilist/airing-schedule').then((r) => r.json()).catch(() => ({ schedules: [] })),
       fetch('/api/tmdb/trending/movies?timeWindow=day').then((r) => r.json()).catch(() => ({ results: [] })),
       fetch('/api/tmdb/trending/shows?timeWindow=day').then((r) => r.json()).catch(() => ({ results: [] })),
-      getWatchlist().catch(() => ({ watchlist: [] })),
+      getWatchlist().catch(() => ({ items: [], authenticated: false })),
     ])
 
     const dynamicNotifs: AppNotification[] = []
+    const watchlistItems = 'items' in watchlistRes && Array.isArray(watchlistRes.items) ? watchlistRes.items : []
     const watchlistTitles = new Set(
-      (watchlistRes.watchlist || []).map((w: any) => (w.title || '').toLowerCase())
+      watchlistItems.map((w: any) => (w.title || '').toLowerCase())
     )
 
     // 3. Process Live Anime Airing Alerts

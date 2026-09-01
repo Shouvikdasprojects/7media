@@ -343,3 +343,6 @@ export const tmdbClient = {
     return `https://image.tmdb.org/t/p/${size}${path}`
   },
 }
+
+export const getMovieDetails = tmdbClient.getMovieDetails
+export const getShowDetails = tmdbClient.getShowDetails
