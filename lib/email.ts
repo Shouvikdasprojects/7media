@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer'
 import dns from 'dns'
 
-// Force IPv4 first in Node.js DNS resolution to eliminate Render / Linux container IPv6 ENETUNREACH errors
+// Force IPv4 first in Node.js DNS resolution
 if (dns.setDefaultResultOrder) {
   try {
     dns.setDefaultResultOrder('ipv4first')
@@ -32,14 +32,11 @@ async function resolveGmailIPv4(): Promise<string> {
     if (addresses && addresses.length > 0) {
       return addresses[0]
     }
-  } catch (err: any) {
-    console.warn('[Email] dns.promises.resolve4 failed, falling back to DoH:', err?.message)
-  }
+  } catch {}
 
-  // Fallback via Google DNS-over-HTTPS (DoH)
   try {
     const res = await fetch('https://dns.google/resolve?name=smtp.gmail.com&type=A', {
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(2000),
     })
     const json = await res.json()
     if (json.Answer && Array.isArray(json.Answer)) {
@@ -50,7 +47,6 @@ async function resolveGmailIPv4(): Promise<string> {
     }
   } catch {}
 
-  // Known Google SMTP IPv4 Anycast IP pool fallback
   const fallbackIps = ['142.250.152.108', '74.125.130.108', '173.194.76.108', '64.233.184.108']
   return fallbackIps[Math.floor(Math.random() * fallbackIps.length)]
 }
@@ -64,11 +60,15 @@ export async function sendEmail({
   replyTo,
 }: SendEmailParams): Promise<{ success: boolean; error?: string }> {
   const plainText = text || stripHtml(html)
+  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
 
-  // 1. Check if Resend API Key is provided (Ultra-fast HTTPS Port 443 — immune to SMTP blocks)
+  // ==========================================================================
+  // STRATEGY 1: RESEND API (HTTPS Port 443 — 100% immune to Render SMTP block)
+  // ==========================================================================
   const resendApiKey = process.env.RESEND_API_KEY
   if (resendApiKey) {
     try {
+      const fromAddress = process.env.RESEND_FROM || `${fromName} <onboarding@resend.dev>`
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -76,9 +76,9 @@ export async function sendEmail({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: `${fromName} <onboarding@resend.dev>`,
+          from: fromAddress,
           to: [to],
-          reply_to: replyTo,
+          reply_to: replyTo || smtpUser,
           subject,
           html,
           text: plainText,
@@ -86,22 +86,61 @@ export async function sendEmail({
       })
 
       if (res.ok) {
+        console.log('[Email] Successfully dispatched via Resend HTTPS API')
         return { success: true }
       }
       const errText = await res.text()
-      console.warn('[Email] Resend API failed, falling back to SMTP:', errText)
+      console.warn('[Email] Resend API failed, falling back:', errText)
     } catch (resendErr: any) {
       console.warn('[Email] Resend error:', resendErr?.message)
     }
   }
 
-  // 2. Gmail SMTP Delivery with Direct IPv4 resolution
-  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '7media.support@gmail.com'
+  // ==========================================================================
+  // STRATEGY 2: BREVO (SENDINBLUE) API (HTTPS Port 443)
+  // ==========================================================================
+  const brevoApiKey = process.env.BREVO_API_KEY
+  if (brevoApiKey) {
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoApiKey.trim(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: fromName, email: process.env.BREVO_SENDER_EMAIL || smtpUser },
+          to: [{ email: to }],
+          replyTo: replyTo ? { email: replyTo } : { email: smtpUser },
+          subject,
+          htmlContent: html,
+          textContent: plainText,
+        }),
+      })
+
+      if (res.ok) {
+        console.log('[Email] Successfully dispatched via Brevo HTTPS API')
+        return { success: true }
+      }
+      const errText = await res.text()
+      console.warn('[Email] Brevo API failed, falling back:', errText)
+    } catch (brevoErr: any) {
+      console.warn('[Email] Brevo error:', brevoErr?.message)
+    }
+  }
+
+  // ==========================================================================
+  // STRATEGY 3: GMAIL SMTP with Direct IPv4 Resolution
+  // (Note: Render Free Tier blocks outbound ports 465/587; use Resend/Brevo on Render)
+  // ==========================================================================
   const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD
 
   if (!smtpPass) {
-    console.warn('[Email] SMTP_PASS or GMAIL_APP_PASSWORD not set in environment.')
-    return { success: false, error: 'Email delivery service is currently not configured on this server.' }
+    console.warn('[Email] No API key (RESEND_API_KEY / BREVO_API_KEY) or SMTP_PASS configured.')
+    return {
+      success: false,
+      error: 'Email delivery service is currently not configured on this server.',
+    }
   }
 
   const cleanPass = smtpPass.replace(/\s+/g, '')
@@ -120,10 +159,9 @@ export async function sendEmail({
     },
   }
 
-  // Resolve pure IPv4 IP to guarantee no IPv6 ENETUNREACH occurs
   const targetHost = await resolveGmailIPv4()
 
-  // Strategy A: Port 465 (Direct SSL) with direct IPv4 target & TLS SNI
+  // Attempt Port 465 (Fast 4s connection timeout)
   try {
     const transporter = nodemailer.createTransport({
       host: targetHost,
@@ -137,17 +175,17 @@ export async function sendEmail({
         user: smtpUser,
         pass: cleanPass,
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 6000,
     } as any)
 
     await transporter.sendMail(mailPayload)
     return { success: true }
   } catch (primaryErr: any) {
-    console.warn(`[Email] Direct IPv4 (${targetHost}:465) attempt failed, trying Port 587...`, primaryErr?.message || primaryErr)
+    console.warn(`[Email] Port 465 failed (${primaryErr?.message}), trying Port 587...`)
 
-    // Strategy B: Port 587 (STARTTLS) with direct IPv4 target & TLS SNI
+    // Attempt Port 587 (Fast 4s connection timeout)
     try {
       const fallbackTransporter = nodemailer.createTransport({
         host: targetHost,
@@ -162,33 +200,18 @@ export async function sendEmail({
           user: smtpUser,
           pass: cleanPass,
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 6000,
       } as any)
 
       await fallbackTransporter.sendMail(mailPayload)
       return { success: true }
     } catch (fallbackErr: any) {
-      console.warn(`[Email] Direct IPv4 (${targetHost}:587) attempt failed, trying hostname fallback...`, fallbackErr?.message || fallbackErr)
-
-      // Strategy C: Fallback to standard hostname
-      try {
-        const standardTransporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: smtpUser,
-            pass: cleanPass,
-          },
-        })
-        await standardTransporter.sendMail(mailPayload)
-        return { success: true }
-      } catch (finalErr: any) {
-        console.error('[Email] All SMTP delivery strategies failed:', finalErr?.message || finalErr)
-        return {
-          success: false,
-          error: finalErr?.message || 'Failed to dispatch email. Please check credentials and try again.',
-        }
+      console.error('[Email] Outbound SMTP blocked on this host (Render Free Tier firewall). Please add RESEND_API_KEY.')
+      return {
+        success: false,
+        error: 'Outbound SMTP is restricted by host firewall. Please configure RESEND_API_KEY in environment variables.',
       }
     }
   }
