@@ -23,6 +23,9 @@ import {
   Trophy,
   ShieldCheck,
   Mail,
+  LogIn,
+  UserPlus,
+  Crown,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
@@ -609,6 +612,81 @@ export function Navbar() {
 
         {mobileOpen && (
           <div className="border-t border-white/10 bg-black/95 p-4 animate-in fade-in">
+            {/* Mobile Auth Header Card */}
+            {session?.user ? (
+              <div className="mb-3.5 p-3.5 rounded-2xl bg-secondary/70 border border-white/10 flex items-center justify-between shadow-lg">
+                <Link
+                  href="/profile"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 min-w-0 flex-1 mr-2"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-white/15 flex items-center justify-center text-sm shrink-0 overflow-hidden shadow-inner">
+                    {avatar && avatar.startsWith('http') ? (
+                      <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : avatar && AVATAR_MAP[avatar] ? (
+                      <span className="text-base">{AVATAR_MAP[avatar]}</span>
+                    ) : (
+                      <span className="font-bold text-white text-sm">
+                        {session.user.name?.charAt(0)?.toUpperCase() || 'U'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                      <span className="truncate">{session.user.name || 'User'}</span>
+                      {isAdminUser && (
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-primary text-primary-foreground shrink-0">
+                          Admin
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">{session.user.email}</p>
+                  </div>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setMobileOpen(false)
+                    await signOut()
+                    router.push('/sign-in')
+                  }}
+                  className="p-2.5 rounded-xl bg-destructive/15 hover:bg-destructive text-destructive hover:text-white border border-destructive/25 transition shrink-0 cursor-pointer active:scale-95"
+                  title="Sign Out"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
+            ) : (
+              <div className="mb-3.5 p-3.5 rounded-2xl bg-gradient-to-r from-primary/20 via-primary/10 to-accent/15 border border-primary/30 shadow-lg space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white">
+                    <Sparkles size={14} className="text-primary" />
+                    <span className="text-xs font-black uppercase tracking-wider">Account Access</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-semibold">Free Streaming</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs shadow-md transition text-center active:scale-95 cursor-pointer"
+                  >
+                    <LogIn size={14} />
+                    <span>Sign In</span>
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition text-center active:scale-95 cursor-pointer"
+                  >
+                    <UserPlus size={14} />
+                    <span>Sign Up</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-1">
               {navItems.map((item) => (
                 <Link
@@ -640,6 +718,15 @@ export function Navbar() {
                   )}
                   <span>My Profile</span>
                 </Link>
+                {isAdminUser && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-amber-400 hover:bg-white/10"
+                  >
+                    <Crown size={15} /> Admin Panel
+                  </Link>
+                )}
                 <Link
                   href="/badges"
                   onClick={() => setMobileOpen(false)}
@@ -678,7 +765,7 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={toggleLanguage}
-                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white"
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white cursor-pointer"
                 >
                   <Languages size={15} /> {language}
                 </button>
