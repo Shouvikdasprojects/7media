@@ -12,6 +12,7 @@ import { SafetyBanner } from '@/components/safety-banner'
 import { ProvidersRow } from '@/components/providers-row'
 import { ContinueWatching } from '@/components/continue-watching'
 import { RecentlyViewedSection } from '@/components/recently-viewed-section'
+import { SmartRecommendations } from '@/components/smart-recommendations'
 import {
   useTrendingMovies,
   usePopularMovies,
@@ -80,6 +81,9 @@ function HomePageContent() {
         <ContinueWatching />
 
         <RecentlyViewedSection />
+
+        {/* Personalized AI Recommendations */}
+        <SmartRecommendations />
 
         {/* Ranked 7REELS row with Popular / This Week toggle */}
         <RankedCarousel popularItems={rankedPopular} weeklyItems={rankedWeekly} />

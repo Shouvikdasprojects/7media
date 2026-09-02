@@ -40,6 +40,7 @@ const NotificationsModal = dynamic(() => import('./notifications-modal').then((m
 const PwaInstallBanner = dynamic(() => import('./pwa-install-banner').then((m) => m.PwaInstallBanner), { ssr: false })
 const MoodRouletteModal = dynamic(() => import('./mood-roulette-modal').then((m) => m.MoodRouletteModal), { ssr: false })
 const DownloadModal = dynamic(() => import('./download-modal').then((m) => m.DownloadModal), { ssr: false })
+const KeyboardShortcutsModal = dynamic(() => import('./keyboard-shortcuts-modal').then((m) => m.KeyboardShortcutsModal), { ssr: false })
 
 const AVATAR_MAP: Record<string, string> = {
   crimson: '🎬',
@@ -62,6 +63,7 @@ export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [rouletteOpen, setRouletteOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [theme, setTheme] = useState<string>('Dark')
   const [quality, setQuality] = useState<'HD' | 'Default' | 'Performance'>('Default')
@@ -69,6 +71,27 @@ export function Navbar() {
   const [isAdminUser, setIsAdminUser] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
+
+  // Global Keyboard Shortcuts Listener ('?' for cheat sheet, 's' for quick search)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase()
+      if (activeTag === 'input' || activeTag === 'textarea' || (document.activeElement as HTMLElement)?.isContentEditable) {
+        return
+      }
+
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault()
+        setShortcutsOpen((prev) => !prev)
+      } else if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   useEffect(() => {
     if (session?.user) {
@@ -846,6 +869,9 @@ export function Navbar() {
       )}
       {downloadOpen && (
         <DownloadModal isOpen={downloadOpen} onClose={() => setDownloadOpen(false)} />
+      )}
+      {shortcutsOpen && (
+        <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       )}
     </>
   )

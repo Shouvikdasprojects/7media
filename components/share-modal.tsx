@@ -6,8 +6,11 @@ import {
   Copy,
   Check,
   Share2,
-  ExternalLink
+  ExternalLink,
+  Sparkles,
+  Download,
 } from 'lucide-react'
+import { StoryCardModal } from './story-card-modal'
 
 interface ShareModalProps {
   isOpen: boolean
@@ -16,6 +19,10 @@ interface ShareModalProps {
   url?: string
   overview?: string
   posterUrl?: string | null
+  backdropUrl?: string | null
+  year?: string
+  rating?: string | number
+  genres?: string[]
 }
 
 export function ShareModal({
@@ -25,8 +32,13 @@ export function ShareModal({
   url,
   overview,
   posterUrl,
+  backdropUrl,
+  year,
+  rating,
+  genres,
 }: ShareModalProps) {
   const [copied, setCopied] = useState(false)
+  const [storyModalOpen, setStoryModalOpen] = useState(false)
   const shareUrl = url || (typeof window !== 'undefined' ? window.location.href : '')
 
   if (!isOpen) return null
@@ -216,18 +228,44 @@ export function ShareModal({
           </div>
         </div>
 
+        {/* 9:16 Story Card Generator CTA */}
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <button
+            type="button"
+            onClick={() => setStoryModalOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-primary/20 via-pink-500/20 to-amber-500/20 hover:from-primary/30 hover:via-pink-500/30 hover:to-amber-500/30 border border-primary/30 py-3 text-xs font-black uppercase tracking-wider text-white transition active:scale-95 shadow-lg shadow-primary/10 cursor-pointer"
+          >
+            <Sparkles size={16} className="text-primary" />
+            <span>🎨 Generate 9:16 Story Card (Instagram / WhatsApp)</span>
+          </button>
+        </div>
+
         {/* Native Mobile Share Button */}
         {typeof navigator !== 'undefined' && 'share' in navigator && (
           <button
             type="button"
             onClick={handleNativeShare}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-zinc-900 py-2.5 text-xs font-bold text-white transition hover:bg-zinc-800"
+            className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-zinc-900/90 py-2.5 text-xs font-bold text-white transition hover:bg-zinc-800 cursor-pointer"
           >
             <ExternalLink size={14} />
             <span>Open System Share Menu</span>
           </button>
         )}
       </div>
+
+      {storyModalOpen && (
+        <StoryCardModal
+          isOpen={storyModalOpen}
+          onClose={() => setStoryModalOpen(false)}
+          title={title}
+          year={year}
+          rating={rating}
+          posterUrl={posterUrl}
+          backdropUrl={backdropUrl}
+          overview={overview}
+          genres={genres}
+        />
+      )}
     </div>
   )
 }
