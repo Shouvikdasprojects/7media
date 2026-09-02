@@ -63,6 +63,70 @@ export async function generateMetadata({
   }
 }
 
-export default function AnimeLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+export default async function AnimeLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  const animeId = parseInt(id)
+  let schemaData: any = null
+
+  try {
+    const data = await anilistClient.getAnimeDetails(animeId)
+    if (data) {
+      const title = data.title.english || data.title.romaji || 'Anime'
+      const cover = data.coverImage?.extraLarge || data.coverImage?.large || data.bannerImage || `${siteUrl}/og-image.png`
+      const rawDesc = data.description?.replace(/<[^>]*>/g, '') || ''
+      const genres = data.genres || []
+
+      schemaData = {
+        '@context': 'https://schema.org',
+        '@type': data.format === 'MOVIE' ? 'Movie' : 'TVSeries',
+        name: title,
+        description: rawDesc || `Watch ${title} on 7MEDIA`,
+        image: cover,
+        genre: genres,
+        inLanguage: 'ja',
+        ...(data.averageScore
+          ? {
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: (data.averageScore / 10).toFixed(1),
+                bestRating: '10',
+                worstRating: '1',
+                ratingCount: Math.max(data.popularity || 50, 10),
+              },
+            }
+          : {}),
+        potentialAction: {
+          '@type': 'WatchAction',
+          target: {
+            '@type': 'EntryPoint',
+            urlTemplate: `${siteUrl}/anime/${id}`,
+            actionPlatform: [
+              'http://schema.org/DesktopWebPlatform',
+              'http://schema.org/MobileWebPlatform',
+              'http://schema.org/AndroidPlatform',
+              'http://schema.org/IOSPlatform',
+            ],
+          },
+        },
+      }
+    }
+  } catch {}
+
+  return (
+    <>
+      {schemaData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+        />
+      )}
+      {children}
+    </>
+  )
 }

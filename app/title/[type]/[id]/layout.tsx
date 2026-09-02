@@ -7,7 +7,7 @@ const siteUrl = getSiteUrl()
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ type: 'movie' | 'tv'; id: string }>
+  params: Promise<{ type: string; id: string }>
 }): Promise<Metadata> {
   const { type, id } = await params
   const isMovie = type === 'movie'
@@ -38,7 +38,16 @@ export async function generateMetadata({
     return {
       title: metaTitle,
       description: metaDesc,
-      keywords: [title, `${title} watch online`, `${title} full movie`, `${title} 4k`, `${title} streaming free`, genres],
+      keywords: [
+        title,
+        `${title} watch online`,
+        `${title} full movie`,
+        `${title} free streaming`,
+        `${title} 4k uhd`,
+        `${title} english sub`,
+        `${title} hindi dubbed`,
+        genres,
+      ],
       alternates: {
         canonical: `${siteUrl}/title/${type}/${id}`,
       },
@@ -46,7 +55,7 @@ export async function generateMetadata({
         title: `${metaTitle} | 7MEDIA`,
         description: metaDesc,
         url: `${siteUrl}/title/${type}/${id}`,
-        type: 'video.movie',
+        type: isMovie ? 'video.movie' : 'video.tv_show',
         images: [{ url: backdrop, width: 1280, height: 720, alt: title }],
       },
       twitter: {
@@ -64,6 +73,74 @@ export async function generateMetadata({
   }
 }
 
-export default function TitleLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+export default async function TitleLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode
+  params: Promise<{ type: string; id: string }>
+}) {
+  const { type, id } = await params
+  const isMovie = type === 'movie'
+  let schemaData: any = null
+
+  try {
+    const data: any = isMovie
+      ? await getMovieDetails(parseInt(id))
+      : await getShowDetails(parseInt(id))
+
+    if (data && (data.title || data.name)) {
+      const title = isMovie ? data.title : data.name
+      const releaseDate = data.release_date || data.first_air_date
+      const poster = data.poster_path ? `https://image.tmdb.org/t/p/w780${data.poster_path}` : `${siteUrl}/og-image.png`
+      const genres = (data.genres || []).map((g: any) => g.name)
+
+      schemaData = {
+        '@context': 'https://schema.org',
+        '@type': isMovie ? 'Movie' : 'TVSeries',
+        name: title,
+        description: data.overview || `Watch ${title} on 7MEDIA`,
+        image: poster,
+        datePublished: releaseDate,
+        genre: genres,
+        inLanguage: 'en',
+        ...(data.vote_average
+          ? {
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: Number(data.vote_average).toFixed(1),
+                bestRating: '10',
+                worstRating: '1',
+                ratingCount: Math.max(data.vote_count || 10, 10),
+              },
+            }
+          : {}),
+        potentialAction: {
+          '@type': 'WatchAction',
+          target: {
+            '@type': 'EntryPoint',
+            urlTemplate: `${siteUrl}/watch/${type}/${id}`,
+            actionPlatform: [
+              'http://schema.org/DesktopWebPlatform',
+              'http://schema.org/MobileWebPlatform',
+              'http://schema.org/AndroidPlatform',
+              'http://schema.org/IOSPlatform',
+            ],
+          },
+        },
+      }
+    }
+  } catch {}
+
+  return (
+    <>
+      {schemaData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+        />
+      )}
+      {children}
+    </>
+  )
 }
