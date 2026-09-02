@@ -565,15 +565,25 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setRouletteOpen(true)}
-              className="p-2 text-accent hover:bg-accent/10 rounded-full transition-all"
+              className="p-2 text-accent hover:bg-accent/10 rounded-full transition-all active:scale-90"
               aria-label="Surprise Me"
             >
               <Sparkles size={18} />
             </button>
             <button
               type="button"
+              onClick={() => setNotifOpen(true)}
+              className="relative p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-all active:scale-90"
+              aria-label="Notifications"
+            >
+              <Bell size={18} />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent animate-ping" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent" />
+            </button>
+            <button
+              type="button"
               onClick={() => setSearchOpen(true)}
-              className="p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-all"
+              className="p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-all active:scale-90"
               aria-label="Open search"
             >
               <Search size={18} />
@@ -581,7 +591,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-2 text-white/80 hover:bg-white/10 rounded-full transition-all"
+              className="p-2 text-white/80 hover:bg-white/10 rounded-full transition-all active:scale-90"
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
