@@ -7,6 +7,7 @@ import { headers } from 'next/headers'
 import { and, eq, sql } from 'drizzle-orm'
 import { verifyPassword } from 'better-auth/crypto'
 import { sendEmail } from '@/lib/email'
+import { buildPremiumEmailHtml } from '@/lib/email-templates'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
@@ -163,42 +164,15 @@ export async function requestEnable2FA(data?: { deliveryEmail?: string }) {
       to: targetEmail,
       subject: `${otpCode} is your 7MEDIA verification code`,
       text: `Your 7MEDIA two-factor authentication verification code is: ${otpCode}\n\nThis code will expire in 15 minutes.\n\nIf you did not request this, please secure your account.\n\n7MEDIA Support Desk`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-          <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-            ${otpCode} is your 7MEDIA security code. Valid for 15 minutes.
-          </div>
-          <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="background-color: #0f172a; padding: 24px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
-              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;">Security Verification</p>
-            </div>
-            <div style="padding: 32px 28px; color: #334155;">
-              <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Two-Factor Authentication Setup</h2>
-              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-                We received a request to enable Two-Factor Authentication for your 7MEDIA account. Enter the verification code below to complete setup:
-              </p>
-              <div style="background-color: #f1f5f9; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; border: 1px solid #cbd5e1;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-bottom: 6px;">Security Code</div>
-                <div style="font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #e11d48; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">${otpCode}</div>
-              </div>
-              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin: 20px 0 0 0;">
-                This code will expire in <strong>15 minutes</strong>. If you did not request this, please ignore this email or change your password.
-              </p>
-            </div>
-            <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-              &copy; ${new Date().getFullYear()} 7MEDIA Streaming Network • Direct Support: 7media.support@gmail.com
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: buildPremiumEmailHtml({
+        badgeTitle: 'TWO-FACTOR AUTHENTICATION',
+        heading: 'Activate Two-Factor Protection',
+        message: 'You requested to enable Two-Factor Authentication for your 7MEDIA account. Enter the 6-digit security code below to complete setup and activate emergency backup codes:',
+        code: otpCode,
+        codeLabel: '2FA Activation Code',
+        expiresInText: '15 minutes',
+        securityTip: 'If you did not initiate this 2FA activation, please change your account password immediately.',
+      }),
     })
 
     if (!emailResult.success) {
@@ -326,42 +300,16 @@ export async function requestDisable2FA() {
       to: targetEmail,
       subject: `${otpCode} is your 7MEDIA security code`,
       text: `Your 7MEDIA two-factor authentication removal confirmation code is: ${otpCode}\n\nThis code will expire in 15 minutes.\n\n7MEDIA Support Desk`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-          <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-            ${otpCode} is your 7MEDIA security code. Valid for 15 minutes.
-          </div>
-          <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="background-color: #0f172a; padding: 24px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
-              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;">Security Verification</p>
-            </div>
-            <div style="padding: 32px 28px; color: #334155;">
-              <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Disable Two-Factor Authentication</h2>
-              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-                A request was made to disable Two-Factor Protection on your 7MEDIA account. Enter the verification code below to confirm this action:
-              </p>
-              <div style="background-color: #f1f5f9; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; border: 1px solid #cbd5e1;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-bottom: 6px;">Confirmation Code</div>
-                <div style="font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #e11d48; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">${otpCode}</div>
-              </div>
-              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin: 20px 0 0 0;">
-                If you did not request this, do NOT share this code and change your password immediately.
-              </p>
-            </div>
-            <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-              &copy; ${new Date().getFullYear()} 7MEDIA Streaming Network • Direct Support: 7media.support@gmail.com
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: buildPremiumEmailHtml({
+        badgeTitle: 'SECURITY CONFIGURATION',
+        heading: 'Disable Two-Factor Authentication',
+        message: 'A request was authorized to disable Two-Factor Protection on your 7MEDIA account. Enter the 6-digit confirmation code below to finalize removal:',
+        code: otpCode,
+        codeLabel: '2FA Removal Code',
+        expiresInText: '15 minutes',
+        securityTip: 'If you did NOT request to disable 2FA, do NOT share this code and secure your password immediately.',
+        accentColor: '#F59E0B',
+      }),
     })
 
     if (!emailResult.success) {
@@ -548,42 +496,15 @@ export async function initiate2FALoginChallenge(data: { email: string; password?
       to: targetEmail,
       subject: `${otpCode} is your 7MEDIA sign-in code`,
       text: `Your 7MEDIA sign-in code is: ${otpCode}\n\nThis code will expire in 10 minutes.\n\nIf you did not initiate this login attempt, please change your password immediately.\n\n7MEDIA Support Desk`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-          <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-            ${otpCode} is your 7MEDIA sign-in code. Valid for 10 minutes.
-          </div>
-          <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="background-color: #0f172a; padding: 24px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
-              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;">Sign-In Verification</p>
-            </div>
-            <div style="padding: 32px 28px; color: #334155;">
-              <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Sign-In Authorization</h2>
-              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-                A sign-in attempt was initiated for your 7MEDIA account. Enter the verification code below to approve this login:
-              </p>
-              <div style="background-color: #f1f5f9; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; border: 1px solid #cbd5e1;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-bottom: 6px;">Sign-In Code</div>
-                <div style="font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #e11d48; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">${otpCode}</div>
-              </div>
-              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin: 20px 0 0 0;">
-                This code will expire in <strong>10 minutes</strong>. If you did not attempt to sign in, please change your password immediately.
-              </p>
-            </div>
-            <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-              &copy; ${new Date().getFullYear()} 7MEDIA Streaming Network • Direct Support: 7media.support@gmail.com
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: buildPremiumEmailHtml({
+        badgeTitle: 'SIGN-IN AUTHORIZATION',
+        heading: 'Two-Factor Login Verification',
+        message: 'A sign-in attempt was initiated for your 7MEDIA account. Enter the 6-digit verification code below to authorize this session:',
+        code: otpCode,
+        codeLabel: 'Sign-In Code',
+        expiresInText: '10 minutes',
+        securityTip: 'If you did not attempt to sign in, someone may know your password. Change your password immediately to safeguard your account.',
+      }),
     })
 
     if (!emailResult.success) {

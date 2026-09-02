@@ -8,6 +8,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { hashPassword, verifyPassword } from 'better-auth/crypto'
 import { sendEmail } from '@/lib/email'
+import { buildPremiumEmailHtml } from '@/lib/email-templates'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { escapeHtml } from '@/lib/utils'
 
@@ -259,42 +260,16 @@ export async function requestPasswordReset(email: string) {
       subject: `${resetCode} is your 7MEDIA password reset code`,
       text: `Hello ${userName},\n\nYour 7MEDIA password reset code is: ${resetCode}\n\nThis code will expire in 15 minutes. If you did not request this, you can safely ignore this email.\n\n7MEDIA Support Desk`,
       fromName: '7MEDIA',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-          <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-            ${resetCode} is your 7MEDIA password reset code. Valid for 15 minutes.
-          </div>
-          <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="background-color: #0f172a; padding: 24px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
-              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;">Password Reset</p>
-            </div>
-            <div style="padding: 32px 28px; color: #334155;">
-              <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Reset Your Password</h2>
-              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-                Hello <strong>${userName}</strong>, we received a request to reset your 7MEDIA account password. Enter the 6-digit code below to set your new password:
-              </p>
-              <div style="background-color: #f1f5f9; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; border: 1px solid #cbd5e1;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-bottom: 6px;">Reset Code</div>
-                <div style="font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #e11d48; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">${resetCode}</div>
-              </div>
-              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin: 20px 0 0 0;">
-                This code will expire in <strong>15 minutes</strong>. If you did not request a password reset, please ignore this message. Your password will remain unchanged.
-              </p>
-            </div>
-            <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-              &copy; ${new Date().getFullYear()} 7MEDIA Streaming Network • Direct Support: 7media.support@gmail.com
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: buildPremiumEmailHtml({
+        badgeTitle: 'PASSWORD RECOVERY',
+        heading: 'Reset Your Password',
+        recipientName: userName,
+        message: 'We received an authorized request to reset the password for your 7MEDIA account. Enter the 6-digit security code below into the reset prompt to create your new password:',
+        code: resetCode,
+        codeLabel: 'Password Reset Code',
+        expiresInText: '15 minutes',
+        securityTip: 'If you did not request a password reset, you can safely disregard this notification. Your current password remains fully protected.',
+      }),
     })
 
     if (!emailResult.success) {
@@ -426,42 +401,17 @@ export async function requestAccountDeletionOtp(data?: { targetEmail?: string })
       subject: `${otpCode} is your 7MEDIA deletion code`,
       text: `Hello ${currentUser.name || 'User'},\n\nYour 7MEDIA account deletion confirmation code is: ${otpCode}\n\nThis code will expire in 15 minutes. If you did not request this, please change your password immediately.\n\n7MEDIA Support Desk`,
       fromName: '7MEDIA',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-          <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-            ${otpCode} is your 7MEDIA account deletion code. Valid for 15 minutes.
-          </div>
-          <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="background-color: #0f172a; padding: 24px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
-              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;">Account Deletion Request</p>
-            </div>
-            <div style="padding: 32px 28px; color: #334155;">
-              <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Confirm Account Deletion</h2>
-              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-                Hello <strong>${currentUser.name || 'User'}</strong>, a request was made to delete your 7MEDIA account. Enter the 6-digit confirmation code below to proceed:
-              </p>
-              <div style="background-color: #fef2f2; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; border: 1px solid #fecaca;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #dc2626; margin-bottom: 6px;">Authorization Code</div>
-                <div style="font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #dc2626; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">${otpCode}</div>
-              </div>
-              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin: 20px 0 0 0;">
-                This code will expire in <strong>15 minutes</strong>. If you did not request this deletion, please change your password immediately to secure your account.
-              </p>
-            </div>
-            <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-              &copy; ${new Date().getFullYear()} 7MEDIA Streaming Network • Direct Support: 7media.support@gmail.com
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: buildPremiumEmailHtml({
+        badgeTitle: 'CRITICAL SECURITY ACTION',
+        heading: 'Permanent Account Deletion',
+        recipientName: currentUser.name || 'User',
+        message: 'A request has been authorized to permanently delete your 7MEDIA account and purge all your saved watchlists, custom folders, watch progress, and personal preferences from the database. Enter the 6-digit confirmation code below to authorize deletion:',
+        code: otpCode,
+        codeLabel: 'Deletion Authorization Code',
+        expiresInText: '15 minutes',
+        securityTip: 'If you did NOT initiate this deletion, do not share this code with anyone and change your password immediately to protect your account.',
+        accentColor: '#EF4444',
+      }),
     })
 
     if (!emailResult.success) {
@@ -589,42 +539,17 @@ export async function requestSignupOtp(data: { name: string; email: string; pass
       subject: `${otpCode} is your 7MEDIA verification code`,
       text: `Hello ${cleanName},\n\nWelcome to 7MEDIA! Your 6-digit verification code is: ${otpCode}\n\nThis code will expire in 15 minutes. Enter this code to complete your registration.\n\n7MEDIA Support Desk`,
       fromName: '7MEDIA',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 24px; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-          <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-            ${otpCode} is your 7MEDIA account verification code. Valid for 15 minutes.
-          </div>
-          <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-            <div style="background-color: #0f172a; padding: 24px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: 2px;">7MEDIA</h1>
-              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;">Account Verification</p>
-            </div>
-            <div style="padding: 32px 28px; color: #334155;">
-              <h2 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Welcome to 7MEDIA, ${escapeHtml(cleanName)}!</h2>
-              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
-                Thank you for signing up. Please enter the verification code below to activate your account and start streaming:
-              </p>
-              <div style="background-color: #f1f5f9; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; border: 1px solid #cbd5e1;">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-bottom: 6px;">Verification Code</div>
-                <div style="font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #e11d48; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">${otpCode}</div>
-              </div>
-              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin: 20px 0 0 0;">
-                This code will expire in <strong>15 minutes</strong>. If you did not create an account on 7MEDIA, you can safely ignore this email.
-              </p>
-            </div>
-            <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 24px; text-align: center; font-size: 12px; color: #94a3b8;">
-              &copy; ${new Date().getFullYear()} 7MEDIA Streaming Network • Direct Support: 7media.support@gmail.com
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
+      html: buildPremiumEmailHtml({
+        badgeTitle: 'ACCOUNT ACTIVATION',
+        heading: `Welcome to 7MEDIA, ${escapeHtml(cleanName)}!`,
+        subheading: 'Premium Cinematic Network',
+        recipientName: cleanName,
+        message: 'Thank you for joining 7MEDIA. To activate your account and access synced watchlists, customized catalogs, and streaming features across all devices, enter the 6-digit verification code below:',
+        code: otpCode,
+        codeLabel: 'Account Activation Code',
+        expiresInText: '15 minutes',
+        securityTip: 'If you did not initiate this registration on 7MEDIA, you can safely disregard this message.',
+      }),
     })
 
     if (!emailResult.success) {

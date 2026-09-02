@@ -17,6 +17,7 @@ import { eq, desc, sql, like, or, and } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { sendEmail } from '@/lib/email'
+import { buildPremiumEmailHtml } from '@/lib/email-templates'
 import { escapeHtml } from '@/lib/utils'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'shouvikdaswork@gmail.com'
@@ -194,25 +195,16 @@ export async function replyToContactMessage(params: { id: string; replyText: str
     // Send email to the user via 7MEDIA Mail Engine
     const emailResult = await sendEmail({
       to: msg.email,
-      fromName: '7MEDIA Support Desk',
-      subject: `Re: [${msg.topic}] Your 7MEDIA Support Inquiry`,
-      text: `Hello ${msg.name},\n\nThank you for reaching out to 7MEDIA.\n\n${replyText}\n\nBest regards,\n7MEDIA Team\nsupport: 7media.support@gmail.com`,
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0c0d12; border: 1px solid #27272a; border-radius: 20px; overflow: hidden; color: #f4f4f5;">
-          <div style="background: linear-gradient(135deg, #e11d48, #be123c); padding: 24px; text-align: center;">
-            <h1 style="margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #ffffff; text-transform: uppercase;">7MEDIA SUPPORT DESK</h1>
-          </div>
-          <div style="padding: 28px;">
-            <p style="font-size: 15px; color: #a1a1aa; margin-top: 0;">Hello <strong style="color: #ffffff;">${escapeHtml(msg.name)}</strong>,</p>
-            <p style="font-size: 14px; color: #d4d4d8; line-height: 1.6;">Regarding your topic: <strong style="color: #fb7185;">${escapeHtml(msg.topic)}</strong></p>
-            <div style="background: #18181b; border-left: 4px solid #e11d48; padding: 16px; border-radius: 8px; margin: 20px 0; font-size: 14px; color: #ffffff; white-space: pre-wrap; line-height: 1.6;">${escapeHtml(replyText)}</div>
-            <p style="font-size: 12px; color: #71717a; margin-bottom: 0;">Original Inquiry: "<em>${escapeHtml(msg.message)}</em>"</p>
-          </div>
-          <div style="background: #121318; padding: 16px; text-align: center; border-top: 1px solid #27272a; font-size: 11px; color: #71717a;">
-            7MEDIA Streaming Network • Direct Support: 7media.support@gmail.com
-          </div>
-        </div>
-      `,
+      fromName: '7MEDIA',
+      subject: `Response regarding: ${msg.topic}`,
+      text: `Hello ${msg.name},\n\nThank you for reaching out to 7MEDIA support regarding "${msg.topic}".\n\n${replyText}\n\nBest regards,\n7MEDIA Support Team\nsupport: 7media.support@gmail.com`,
+      html: buildPremiumEmailHtml({
+        badgeTitle: 'SUPPORT DESK RESPONSE',
+        heading: `Regarding: ${escapeHtml(msg.topic)}`,
+        recipientName: msg.name,
+        message: `${escapeHtml(replyText).replace(/\n/g, '<br/>')}<br/><br/><div style="padding: 12px 16px; background-color: #0c0d11; border: 1px solid #232530; border-radius: 10px; font-size: 12px; color: #73778c;"><em>Original Inquiry: "${escapeHtml(msg.message)}"</em></div>`,
+        securityTip: 'If you have further inquiries, you can reply directly or open a new ticket on 7media.pages.dev/contact.',
+      }),
     })
 
     if (!emailResult.success) {
