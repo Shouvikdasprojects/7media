@@ -16,6 +16,7 @@ import {
   sendSystemBroadcast,
   getAdminRecentComments,
   deleteAdminComment,
+  deleteAdminUser,
 } from '@/app/actions/admin'
 import { CustomDialogModal } from '@/components/custom-dialog-modal'
 import {
@@ -160,6 +161,33 @@ export default function AdminDashboardPage() {
     navigator.clipboard.writeText(text)
     setCopiedEmail(text)
     setTimeout(() => setCopiedEmail(null), 2000)
+  }
+
+  const [isDeletingUserId, setIsDeletingUserId] = useState<string | null>(null)
+
+  const handleDeleteUser = (u: any) => {
+    if (u.role === 'admin' || u.email === 'shouvikdaswork@gmail.com' || u.email === '7media.support@gmail.com') {
+      showToast('Master Admin accounts are protected and cannot be deleted.', 'error')
+      return
+    }
+
+    setDeleteDialog({
+      isOpen: true,
+      title: 'Permanently Delete User Account',
+      message: `Are you sure you want to permanently delete user "${u.name || u.email}" (${u.email})? This will immediately purge all their saved watchlists, watch progress, comments, 2FA credentials, and database records from 7MEDIA. This action is irreversible.`,
+      onConfirm: async () => {
+        setIsDeletingUserId(u.id)
+        const res = await deleteAdminUser(u.id)
+        setIsDeletingUserId(null)
+        if (res.success) {
+          showToast(res.message || 'User deleted successfully.', 'success')
+          loadUsers(userSearch)
+          loadStats()
+        } else {
+          showToast(res.error || 'Failed to delete user.', 'error')
+        }
+      },
+    })
   }
 
   const handleOpenReplyModal = (msg: any) => {
@@ -579,6 +607,7 @@ export default function AdminDashboardPage() {
                       <th className="p-4">Email Verified</th>
                       <th className="p-4">Role</th>
                       <th className="p-4">Registered Date</th>
+                      <th className="p-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
@@ -633,11 +662,32 @@ export default function AdminDashboardPage() {
                         <td className="p-4 text-muted-foreground">
                           {new Date(u.createdAt).toLocaleDateString()}
                         </td>
+                        <td className="p-4 text-right">
+                          {u.role === 'admin' || u.email === 'shouvikdaswork@gmail.com' || u.email === '7media.support@gmail.com' ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-muted-foreground/60 px-2.5 py-1 rounded-xl bg-secondary/40 border border-border/50">
+                              <Lock size={11} /> Protected
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleDeleteUser(u)}
+                              disabled={isDeletingUserId === u.id}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-destructive hover:text-white bg-destructive/10 hover:bg-destructive border border-destructive/25 transition shadow-sm active:scale-95 cursor-pointer disabled:opacity-50"
+                              title="Permanently delete user account"
+                            >
+                              {isDeletingUserId === u.id ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={12} />
+                              )}
+                              <span>Delete</span>
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                     {users.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
                           No users found matching your search.
                         </td>
                       </tr>

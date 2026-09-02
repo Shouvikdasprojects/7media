@@ -3,6 +3,7 @@
 import { db } from '@/lib/db'
 import {
   user,
+  account,
   session as sessionTable,
   userTwoFactor,
   catalogs,
@@ -318,3 +319,58 @@ export async function deleteAdminComment(commentId: string) {
     return { success: false, error: err?.message }
   }
 }
+
+// 9. Admin Permanently Delete User Account
+export async function deleteAdminUser(targetUserId: string) {
+  const { isAdmin, user: adminUser } = await verifyIsAdmin()
+  if (!isAdmin || !adminUser) {
+    return { success: false, error: 'Unauthorized: Master Admin access required.' }
+  }
+
+  if (!targetUserId?.trim()) {
+    return { success: false, error: 'User ID is required.' }
+  }
+
+  // Prevent self-deletion via admin panel
+  if (targetUserId === adminUser.id) {
+    return { success: false, error: 'Cannot delete your own active Master Admin account.' }
+  }
+
+  try {
+    const [target] = await db
+      .select({ id: user.id, email: user.email, name: user.name })
+      .from(user)
+      .where(eq(user.id, targetUserId))
+      .limit(1)
+
+    if (!target) {
+      return { success: false, error: 'User not found in database.' }
+    }
+
+    const cleanEmail = target.email?.toLowerCase().trim()
+    if (cleanEmail === ADMIN_EMAIL.toLowerCase().trim() || cleanEmail === '7media.support@gmail.com') {
+      return { success: false, error: 'Protected system administrator accounts cannot be deleted.' }
+    }
+
+    // Cascade delete all associated user records
+    await db.delete(catalogs).where(eq(catalogs.userId, targetUserId))
+    await db.delete(watchlist).where(eq(watchlist.userId, targetUserId))
+    await db.delete(progress).where(eq(progress.userId, targetUserId))
+    await db.delete(reactions).where(eq(reactions.userId, targetUserId))
+    await db.delete(sessionTable).where(eq(sessionTable.userId, targetUserId))
+    await db.delete(account).where(eq(account.userId, targetUserId))
+    await db.delete(userTwoFactor).where(eq(userTwoFactor.userId, targetUserId))
+    await db.delete(comments).where(eq(comments.userId, targetUserId))
+    await db.delete(notifications).where(eq(notifications.userId, targetUserId))
+    await db.delete(user).where(eq(user.id, targetUserId))
+
+    return {
+      success: true,
+      message: `Account "${target.name || target.email}" has been permanently purged from 7MEDIA database.`,
+    }
+  } catch (err: any) {
+    console.error('Error in deleteAdminUser:', err)
+    return { success: false, error: err?.message || 'Failed to delete user account.' }
+  }
+}
+
