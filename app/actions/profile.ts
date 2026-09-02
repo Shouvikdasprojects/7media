@@ -256,7 +256,8 @@ export async function requestPasswordReset(email: string) {
     // Send email via timeout-safe transporter
     const emailResult = await sendEmail({
       to: cleanEmail,
-      subject: `[7MEDIA] Your Password Reset Code: ${resetCode}`,
+      subject: `Your 7MEDIA password reset code: ${resetCode}`,
+      text: `Hello ${userName},\n\nWe received a request to reset your 7MEDIA password.\n\nYour 6-digit reset code is: ${resetCode}\n\nThis code will expire in 15 minutes. If you did not request this, you can safely ignore this email.\n\n7MEDIA Security Team`,
       fromName: '7MEDIA Security',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
@@ -412,7 +413,8 @@ export async function requestAccountDeletionOtp(data?: { targetEmail?: string })
 
     const emailResult = await sendEmail({
       to: chosenEmail,
-      subject: `[7MEDIA CRITICAL] Account Deletion Security Code: ${otpCode}`,
+      subject: `Your 7MEDIA account deletion confirmation code: ${otpCode}`,
+      text: `Hello ${currentUser.name || 'User'},\n\nA request has been made to permanently delete your 7MEDIA account.\n\nYour 6-digit confirmation code is: ${otpCode}\n\nThis code will expire in 15 minutes. If you did not request this deletion, please secure your account immediately.\n\n7MEDIA Security Desk`,
       fromName: '7MEDIA Security Desk',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(239,68,68,0.3);">
@@ -564,7 +566,8 @@ export async function requestSignupOtp(data: { name: string; email: string; pass
 
     const emailResult = await sendEmail({
       to: cleanEmail,
-      subject: `[7MEDIA] Your Verification Code: ${otpCode}`,
+      subject: `Your 7MEDIA verification code: ${otpCode}`,
+      text: `Hello ${cleanName},\n\nWelcome to 7MEDIA! Your 6-digit account verification code is: ${otpCode}\n\nThis code will expire in 15 minutes. Enter this code to complete your registration.\n\n7MEDIA Team`,
       fromName: '7MEDIA Verification',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">

@@ -58,15 +58,18 @@ async function sendSmtpEmail({
   to,
   subject,
   html,
+  text,
 }: {
   to: string
   subject: string
   html: string
+  text?: string
 }) {
   return sendEmail({
     to,
     subject,
     html,
+    text,
     fromName: '7MEDIA Security',
   })
 }
@@ -158,7 +161,8 @@ export async function requestEnable2FA(data?: { deliveryEmail?: string }) {
 
     const emailResult = await sendSmtpEmail({
       to: targetEmail,
-      subject: `[7MEDIA] Your 2FA Verification Code: ${otpCode}`,
+      subject: `Your 7MEDIA 2FA activation code: ${otpCode}`,
+      text: `Your 7MEDIA Two-Factor Authentication activation code is: ${otpCode}\n\nThis code will expire in 15 minutes. If you did not request this, please secure your account immediately.\n\n7MEDIA Security Team`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
           <div style="background: #e50914; padding: 22px 24px; text-align: center;">
@@ -310,7 +314,8 @@ export async function requestDisable2FA() {
 
     const emailResult = await sendSmtpEmail({
       to: targetEmail,
-      subject: `[7MEDIA] Your 2FA Confirmation Code: ${otpCode}`,
+      subject: `Your 7MEDIA 2FA confirmation code: ${otpCode}`,
+      text: `Your 7MEDIA Two-Factor Authentication removal confirmation code is: ${otpCode}\n\nThis code will expire in 15 minutes.\n\n7MEDIA Security Team`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
           <div style="background: #e50914; padding: 22px 24px; text-align: center;">
@@ -515,10 +520,11 @@ export async function initiate2FALoginChallenge(data: { email: string; password?
       expiresAt,
     })
 
-    // 5. Send Email via Gmail SMTP
+    // 5. Send Email via Secure Engine
     const emailResult = await sendSmtpEmail({
       to: targetEmail,
-      subject: `[7MEDIA] Your Sign-In Code: ${otpCode}`,
+      subject: `Your 7MEDIA sign-in code: ${otpCode}`,
+      text: `Your 7MEDIA sign-in authorization code is: ${otpCode}\n\nThis code will expire in 15 minutes. If you did not initiate this login attempt, please secure your account.\n\n7MEDIA Security Team`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; background: #09090b; color: #f4f4f5; border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
           <div style="background: #e50914; padding: 22px 24px; text-align: center;">
