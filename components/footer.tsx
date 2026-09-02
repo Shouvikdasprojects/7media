@@ -71,15 +71,6 @@ export function Footer() {
               </span>
               <span>All Systems Operational</span>
             </div>
-
-            {/* Official Support Email Pill */}
-            <a
-              href="mailto:7media.support@gmail.com"
-              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-secondary/80 hover:bg-secondary border border-border text-foreground text-xs font-bold transition-all shadow-sm cursor-pointer"
-            >
-              <Mail size={14} className="text-primary" />
-              <span>7media.support@gmail.com</span>
-            </a>
           </div>
         </div>
 
